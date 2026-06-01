@@ -67,17 +67,18 @@ performance format that turns a recurring computational tax into a one-time cost
 
 All timings are median over 30 rounds on an NVIDIA RTX 5080, CUDA 12.8, Python 3.11.
 Proteins span the full range from a 76-residue domain to a 3,525-residue CRISPR enzyme.
+Run `python boltz_benchmark.py` to reproduce.
 
 ### Per-structure load times
 
 | Structure | Method | Res | MSA seqs | mmCIF parse | ptt: full | ptt: backbone | ptt: bonds | ptt: MSA | ptt: dist mx |
 |---|---|---|---|---|---|---|---|---|---|
-| 1UBQ - Ubiquitin | X-ray | 76 | 512 | 7.4 ms | 2.9 ms | 1.2 ms | 0.7 ms | 1.6 ms | 0.8 ms |
-| 6LU7 - SARS-CoV-2 Mpro | X-ray | 312 | 1,024 | 28.7 ms | 2.9 ms | 1.2 ms | 0.7 ms | 5.1 ms | 1.6 ms |
-| 4HHB - Hemoglobin | X-ray | 574 | 2,048 | 55.0 ms | 2.9 ms | 1.2 ms | 0.7 ms | 11.9 ms | 3.4 ms |
-| 6M0J - ACE2 + RBD | Cryo-EM | 791 | 2,048 | 73.1 ms | 2.9 ms | 1.2 ms | 0.7 ms | 14.9 ms | 6.4 ms |
-| 6VXX - Spike trimer | Cryo-EM | 2,916 | 8,192 | 278.5 ms | 3.3 ms | 1.3 ms | 0.9 ms | 207.8 ms | 67.8 ms |
-| 6OHW - Cas12a | Cryo-EM | 3,525 | 8,192 | 345.5 ms | 3.3 ms | 1.2 ms | 0.9 ms | 240.3 ms | 105.7 ms |
+| 1UBQ - Ubiquitin | X-ray | 76 | 512 | 7.2 ms | 2.8 ms | 1.2 ms | 0.7 ms | 1.6 ms | 0.8 ms |
+| 6LU7 - SARS-CoV-2 Mpro | X-ray | 312 | 1,024 | 29.6 ms | 2.9 ms | 1.2 ms | 0.7 ms | 5.1 ms | 2.0 ms |
+| 4HHB - Hemoglobin | X-ray | 574 | 2,048 | 55.3 ms | 2.9 ms | 1.2 ms | 0.7 ms | 11.3 ms | 3.5 ms |
+| 6M0J - ACE2 + RBD | Cryo-EM | 791 | 2,048 | 74.7 ms | 2.9 ms | 1.2 ms | 0.7 ms | 14.7 ms | 6.4 ms |
+| 6VXX - Spike trimer | Cryo-EM | 2,916 | 8,192 | 283.4 ms | 3.3 ms | 1.3 ms | 0.9 ms | 208.3 ms | 71.1 ms |
+| 6OHW - Cas12a | Cryo-EM | 3,525 | 8,192 | 352.4 ms | 3.3 ms | 1.2 ms | 1.0 ms | 240.7 ms | 104.5 ms |
 
 **Column definitions**
 - `ptt: full` - `read()` - all atoms, backbone, bonds, metadata
@@ -90,36 +91,67 @@ Proteins span the full range from a 76-residue domain to a 3,525-residue CRISPR 
 
 | Structure | Res | full | backbone | bonds | MSA | dist mx |
 |---|---|---|---|---|---|---|
-| 1UBQ - Ubiquitin | 76 | 3x | 6x | 11x | 5x | 9x |
-| 6LU7 - SARS-CoV-2 Mpro | 312 | 10x | 24x | 41x | 6x | 17x |
-| 4HHB - Hemoglobin | 574 | 19x | 44x | 76x | 5x | 16x |
-| 6M0J - ACE2 + RBD | 791 | 25x | 61x | 98x | 5x | 11x |
-| 6VXX - Spike trimer | 2,916 | 85x | 217x | 304x | 1x* | 4x |
-| 6OHW - Cas12a | 3,525 | 106x | 281x | 366x | 1x* | 3x |
+| 1UBQ - Ubiquitin | 76 | 3x | 6x | 11x | 4x | 9x |
+| 6LU7 - SARS-CoV-2 Mpro | 312 | 10x | 24x | 43x | 6x | 15x |
+| 4HHB - Hemoglobin | 574 | 19x | 45x | 78x | 5x | 16x |
+| 6M0J - ACE2 + RBD | 791 | 26x | 61x | 102x | 5x | 12x |
+| 6VXX - Spike trimer | 2,916 | 87x | 223x | 308x | 1x* | 4x |
+| 6OHW - Cas12a | 3,525 | 108x | 284x | 370x | 1x* | 3x |
 
 *MSA speedup shown as 1x vs mmCIF parse because both are in the same time range for
 large proteins - the real MSA comparison is vs JackHMMER generation (see below).
+
+### Feature assembly: time to prepare all tensors for model.forward()
+
+Traditional = mmCIF parse + read MSA from A3M file. ProteinTensor = single .ptt read
+with all features pre-cached (sequence, backbone, bonds, MSA, distance matrix,
+ESM2 embedding).
+
+| Structure | Res | Traditional | ProteinTensor | Speedup |
+|---|---|---|---|---|
+| 1UBQ - Ubiquitin | 76 | 22.7 ms | 5.2 ms | 4x |
+| 6LU7 - SARS-CoV-2 Mpro | 312 | 157.3 ms | 9.9 ms | 16x |
+| 4HHB - Hemoglobin | 574 | 525.5 ms | 17.7 ms | 30x |
+| 6M0J - ACE2 + RBD | 791 | 722.7 ms | 23.9 ms | 30x |
+| 6VXX - Spike trimer | 2,916 | 9,838.5 ms | 282.7 ms | 35x |
+| 6OHW - Cas12a | 3,525 | 11,903.1 ms | 348.4 ms | **34x** |
+
+Average speedup across all six structures: **34x** for full feature assembly.
+
+### DataLoader batch throughput
+
+Measured using `ProteinDataset` + `ProteinDataset.collate()`, loading structures into
+padded batches ready for `model.forward()`. Single process, no prefetch workers.
+
+| Batch size | ms / batch | Structures / sec |
+|---|---|---|
+| 1 | 0.01 ms | 88,106 |
+| 4 | 0.04 ms | 108,696 |
+| 8 | 0.37 ms | 21,707 |
+| 16 | 0.95 ms | 16,783 |
+| 32 | 2.0 ms | **15,854** |
 
 ### Scale projection: 100,000 structures, one training epoch
 
 | Operation | Traditional pipeline | ProteinTensor | Speedup |
 |---|---|---|---|
-| Structure load (parse mmCIF each epoch) | 3.6 hours | 5 min | **43x** |
-| Backbone-only load (template search) | 3.6 hours | 2 min | **106x** |
-| MSA generation (JackHMMER, 32-core CPU, once) | 4,000 hours | 2.2 hours | **~1,800x** |
+| Structure load (parse mmCIF each epoch) | 3.7 hours | 5 min | **45x** |
+| Backbone-only load (template search) | 3.7 hours | 2 min | **109x** |
+| Full feature assembly (seq + MSA + pairs + emb) | 4.5 days | 3.2 hours | **34x** |
+| MSA generation (JackHMMER, 32-core CPU, once) | 4,000 hours | 2.2 hours | **1,794x** |
 
 > MSA generation assumes 2.4 min/protein on a 32-core server (PDB90 database, standard
-> AlphaFold settings). With ProteinTensor, MSAs are generated once and loaded from the
-> `.ptt` cache on every subsequent run. The 4,000-hour figure is the real cost that
-> AlphaFold2 users pay to build training datasets.
+> AlphaFold settings). ProteinTensor generates MSAs once and loads from the `.ptt` cache
+> on every subsequent run. The 4,000-hour figure is the real cost AlphaFold2 and Boltz
+> users pay to build training datasets from scratch.
 
 ### Disk tradeoff
 
-A structure-only `.ptt` (no MSA, no embeddings) is 5–11x **smaller** than the source
-mmCIF. A full-featured `.ptt` (8,192-sequence MSA + distance matrix + ESM2-650M
-embedding at float16) is larger because it stores precomputed features that previously
-lived in separate files or were never persisted at all. The tradeoff is deliberate:
-pay disk space once to avoid paying GPU-hours and CPU-hours repeatedly.
+A full-featured `.ptt` (8,192-sequence MSA + distance matrix + ESM2-650M embedding at
+float16) averages **23x larger** than the source mmCIF across the six benchmark structures.
+The tradeoff is deliberate: pay disk space once to avoid paying GPU-hours and CPU-hours
+on every training run. A structure-only `.ptt` with no cached features is smaller than
+the source mmCIF.
 
 ---
 
