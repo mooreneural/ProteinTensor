@@ -52,6 +52,72 @@ def write(data: ProteinTensorData, path: str | Path, compression: str = "blosc")
         store.attrs["num_bonds"] = int(data.bond_edge_index.shape[1])
 
 
+def add_msa(
+    path: str | Path,
+    msa: "MsaData",
+    source: str = "default",
+    compression: str = "blosc",
+    overwrite: bool = False,
+) -> None:
+    """Append MSA data to an existing .ptt file without touching structure data.
+
+    Parameters
+    ----------
+    path        Path to an existing .ptt Zarr store.
+    msa         MsaData object (from from_a3m() or constructed directly).
+    source      Name for this MSA source, e.g. "uniref90", "bfd", "colabfold".
+                Multiple sources can coexist; each gets its own sub-group.
+    overwrite   If False (default) raise if this source already exists.
+    """
+    from .msa import MsaData  # local import avoids circular dependency at module load
+
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"{path} does not exist. Run proteintensor convert first.")
+
+    store = zarr.open(str(path), mode="r+")
+    msa_root = store.require_group("msa")
+
+    if source in msa_root and not overwrite:
+        raise ValueError(
+            f"MSA source '{source}' already exists in {path}. "
+            "Pass overwrite=True to replace it."
+        )
+
+    compressor = _compressor(compression)
+    grp = msa_root.require_group(source)
+
+    N_seq, N_res = msa.tokens.shape
+    chunk_seq = min(256, N_seq)
+    chunk_res = min(256, N_res)
+
+    grp.create_dataset("tokens",          data=msa.tokens,          dtype="int32",
+                       chunks=(chunk_seq, chunk_res), compressor=compressor, overwrite=True)
+    grp.create_dataset("deletion_matrix", data=msa.deletion_matrix, dtype="float32",
+                       chunks=(chunk_seq, chunk_res), compressor=compressor, overwrite=True)
+    grp.create_dataset("profile",         data=msa.profile,         dtype="float32",
+                       compressor=compressor, overwrite=True)
+    grp.create_dataset("deletion_mean",   data=msa.deletion_mean,   dtype="float32",
+                       compressor=compressor, overwrite=True)
+
+    grp.attrs.update({
+        "num_sequences":   N_seq,
+        "num_residues":    N_res,
+        "sequence_hash":   msa.sequence_hash,
+        "tool":            msa.tool,
+        "tool_version":    msa.tool_version,
+        "database":        msa.database,
+        "database_date":   msa.database_date,
+        "created_at":      msa.created_at,
+    })
+
+    # Update root-level msa source list
+    existing = list(store.attrs.get("msa_sources", []))
+    if source not in existing:
+        existing.append(source)
+    store.attrs["msa_sources"] = existing
+
+
 def _arr(group: zarr.Group, name: str, data: np.ndarray, dtype: str, compressor) -> None:
     group.create_dataset(name, data=data.astype(dtype), compressor=compressor, overwrite=True)
 

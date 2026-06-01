@@ -99,6 +99,41 @@ def info(path: Path):
 
 
 # ---------------------------------------------------------------------------
+# msa-info
+# ---------------------------------------------------------------------------
+
+@main.command("msa-info")
+@click.argument("path", type=click.Path(exists=True, path_type=Path))
+def msa_info(path: Path):
+    """Show MSA sources and provenance stored in a .ptt file."""
+    from .reader import list_msas
+    import zarr, datetime
+
+    store = zarr.open(str(path), mode="r")
+    sources = list_msas(path)
+
+    if not sources:
+        console.print(f"[yellow]No MSA data found in {path.name}[/yellow]")
+        return
+
+    for source in sources:
+        attrs = dict(store[f"msa/{source}"].attrs)
+        tbl = Table(show_header=False, box=None, padding=(0, 2))
+        tbl.add_row("Source",      source)
+        tbl.add_row("Sequences",   f"{attrs.get('num_sequences', '?'):,}")
+        tbl.add_row("Residues",    f"{attrs.get('num_residues', '?'):,}")
+        tbl.add_row("Tool",        attrs.get("tool", "?"))
+        tbl.add_row("Version",     attrs.get("tool_version", "?"))
+        tbl.add_row("Database",    attrs.get("database", "?"))
+        tbl.add_row("DB date",     attrs.get("database_date", "?") or "unknown")
+        tbl.add_row("Seq hash",    (attrs.get("sequence_hash") or "")[:16] + "...")
+        if attrs.get("created_at"):
+            ts = datetime.datetime.fromtimestamp(attrs["created_at"]).isoformat(timespec="seconds")
+            tbl.add_row("Cached at", ts)
+        console.print(Panel(tbl, title=f"[bold]{path.name} / msa / {source}[/bold]", expand=False))
+
+
+# ---------------------------------------------------------------------------
 # benchmark
 # ---------------------------------------------------------------------------
 

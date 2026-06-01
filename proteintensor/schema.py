@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
 
-FORMAT_VERSION = "0.3"
+FORMAT_VERSION = "0.4"
 
 AA_VOCAB: dict[str, int] = {
     "ALA": 0, "ARG": 1, "ASN": 2, "ASP": 3, "CYS": 4,

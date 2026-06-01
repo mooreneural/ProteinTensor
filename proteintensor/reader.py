@@ -4,6 +4,7 @@ import zarr
 from pathlib import Path
 
 from .schema import ProteinTensorData, BackboneData, BondData
+from .msa import MsaData
 
 
 def read(path: str | Path) -> ProteinTensorData:
@@ -78,3 +79,47 @@ def mmap_backbone(path: str | Path) -> zarr.Array:
     if "backbone" not in store:
         raise KeyError(f"No backbone group in {path}. Re-convert with proteintensor>=0.2.")
     return store["backbone/positions"]
+
+
+def list_msas(path: str | Path) -> list[str]:
+    """Return the list of MSA source names stored in a .ptt file."""
+    store = zarr.open(str(path), mode="r")
+    if "msa" not in store:
+        return []
+    return list(store["msa"].keys())
+
+
+def read_msa(path: str | Path, source: str = "default") -> MsaData:
+    """Load the MSA for one source fully into memory."""
+    store = zarr.open(str(path), mode="r")
+    _require_msa_source(store, path, source)
+    grp   = store[f"msa/{source}"]
+    attrs = dict(grp.attrs)
+    return MsaData(
+        tokens=grp["tokens"][:],
+        deletion_matrix=grp["deletion_matrix"][:],
+        profile=grp["profile"][:],
+        deletion_mean=grp["deletion_mean"][:],
+        sequence_hash=attrs.get("sequence_hash", ""),
+        tool=attrs.get("tool", ""),
+        tool_version=attrs.get("tool_version", ""),
+        database=attrs.get("database", ""),
+        database_date=attrs.get("database_date", ""),
+        created_at=attrs.get("created_at", 0.0),
+    )
+
+
+def mmap_msa_tokens(path: str | Path, source: str = "default") -> zarr.Array:
+    """Return a lazy [N_seq, N_res] view of MSA tokens — no full load."""
+    store = zarr.open(str(path), mode="r")
+    _require_msa_source(store, path, source)
+    return store[f"msa/{source}/tokens"]
+
+
+def _require_msa_source(store: zarr.Group, path, source: str) -> None:
+    if "msa" not in store or source not in store["msa"]:
+        available = list(store["msa"].keys()) if "msa" in store else []
+        raise KeyError(
+            f"MSA source '{source}' not found in {path}. "
+            f"Available: {available or '(none)'}"
+        )
