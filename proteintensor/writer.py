@@ -39,6 +39,12 @@ def write(data: ProteinTensorData, path: str | Path, compression: str = "blosc")
     _arr(struct, "residue_atom_start", data.residue_atom_start, "int32", compressor)
     _arr(struct, "residue_atom_count", data.residue_atom_count, "int32", compressor)
 
+    if data.backbone_positions is not None and data.backbone_mask is not None:
+        bb = store.require_group("backbone")
+        _arr(bb, "positions", data.backbone_positions, "float32", compressor)
+        _arr(bb, "mask",      data.backbone_mask,      "bool",    compressor)
+        store.attrs["has_backbone"] = True
+
 
 def _arr(group: zarr.Group, name: str, data: np.ndarray, dtype: str, compressor) -> None:
     group.create_dataset(name, data=data.astype(dtype), compressor=compressor, overwrite=True)

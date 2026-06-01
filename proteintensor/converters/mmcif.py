@@ -2,7 +2,7 @@ from __future__ import annotations
 import numpy as np
 from pathlib import Path
 
-from ..schema import ProteinTensorData, AA_VOCAB, AA_UNK
+from ..schema import ProteinTensorData, AA_VOCAB, AA_UNK, BACKBONE_ATOMS, N_BACKBONE
 
 
 def from_mmcif(path: str | Path, pdb_id: str = "") -> ProteinTensorData:
@@ -47,6 +47,8 @@ def _extract(structure, pdb_id: str) -> ProteinTensorData:
     bfactors: list[float]    = []
     atom_starts: list[int]   = []
     atom_counts: list[int]   = []
+    bb_pos_list: list        = []   # per-residue [4, 3] arrays
+    bb_mask_list: list       = []   # per-residue [4] bool arrays
     cursor = 0
 
     resolution = float("nan")
@@ -79,6 +81,7 @@ def _extract(structure, pdb_id: str) -> ProteinTensorData:
             res_indices.append(int(residue.seqid.num))
             chain_ids.append(chain_label)
 
+            # All-atom ragged storage
             n = 0
             for atom in residue:
                 pos = atom.pos
@@ -90,6 +93,19 @@ def _extract(structure, pdb_id: str) -> ProteinTensorData:
             atom_starts.append(cursor)
             atom_counts.append(n)
             cursor += n
+
+            # Backbone dense storage: N=0, CA=1, C=2, O=3
+            atom_map = {a.name: a for a in residue}
+            bb_pos  = np.zeros((N_BACKBONE, 3), dtype=np.float32)
+            bb_mask = np.zeros(N_BACKBONE, dtype=bool)
+            for bb_idx, bb_name in enumerate(BACKBONE_ATOMS):
+                atom = atom_map.get(bb_name)
+                if atom is not None:
+                    p = atom.pos
+                    bb_pos[bb_idx] = [p.x, p.y, p.z]
+                    bb_mask[bb_idx] = True
+            bb_pos_list.append(bb_pos)
+            bb_mask_list.append(bb_mask)
 
     if not seq_tokens:
         raise ValueError(f"No polymer residues found in '{pdb_id}'")
@@ -103,6 +119,8 @@ def _extract(structure, pdb_id: str) -> ProteinTensorData:
         b_factors=np.array(bfactors,          dtype=np.float32),
         residue_atom_start=np.array(atom_starts, dtype=np.int32),
         residue_atom_count=np.array(atom_counts, dtype=np.int32),
+        backbone_positions=np.stack(bb_pos_list).astype(np.float32),  # [N_res, 4, 3]
+        backbone_mask=np.stack(bb_mask_list),                          # [N_res, 4]
         pdb_id=pdb_id,
         resolution=resolution,
         method=method,
