@@ -25,14 +25,14 @@ N_BACKBONE = len(BACKBONE_ATOMS)
 @dataclass
 class BondData:
     """Covalent bond graph returned by read_bonds()."""
-    edge_index: np.ndarray   # int32 [2, N_edges]  (src, dst) — bidirectional
+    edge_index: np.ndarray   # int32 [2, N_edges]  (src, dst) - bidirectional
     edge_type:  np.ndarray   # uint8 [N_edges]
     num_atoms:  int
 
 
 @dataclass
 class BackboneData:
-    """Lightweight view returned by read_backbone() — sequence + backbone only."""
+    """Lightweight view returned by read_backbone() - sequence + backbone only."""
     positions: np.ndarray        # float32 [N_res, 4, 3]  N / CA / C / O
     mask: np.ndarray             # bool    [N_res, 4]
     sequence_tokens: np.ndarray  # int32   [N_res]
@@ -42,26 +42,26 @@ class BackboneData:
 
 @dataclass
 class ProteinTensorData:
-    # Sequence-level — shape [N_res]
+    # Sequence-level - shape [N_res]
     sequence_tokens: np.ndarray      # int32   residue vocab indices
     residue_index: np.ndarray        # int32   PDB sequence numbers
     chain_id: np.ndarray             # S1      single-char chain labels
 
-    # Atom-level — shapes [N_atoms] or [N_atoms, 3]
+    # Atom-level - shapes [N_atoms] or [N_atoms, 3]
     atom_positions: np.ndarray       # float32 [N_atoms, 3]  Angstroms
     atom_mask: np.ndarray            # bool    [N_atoms]
     b_factors: np.ndarray            # float32 [N_atoms]     B-factor / pLDDT
 
-    # Residue->atom mapping — shape [N_res]
+    # Residue->atom mapping - shape [N_res]
     residue_atom_start: np.ndarray   # int32   first atom index for each residue
     residue_atom_count: np.ndarray   # int32   number of atoms per residue
 
-    # Backbone dense layout — shapes [N_res, 4, 3] and [N_res, 4]
+    # Backbone dense layout - shapes [N_res, 4, 3] and [N_res, 4]
     # Atom order: N=0, CA=1, C=2, O=3  (missing atoms have mask=False, coords=0)
     backbone_positions: np.ndarray | None = None  # float32 [N_res, 4, 3]
     backbone_mask: np.ndarray | None = None       # bool    [N_res, 4]
 
-    # Covalent bond graph — bidirectional edges referencing atom_positions indices
+    # Covalent bond graph - bidirectional edges referencing atom_positions indices
     bond_edge_index: np.ndarray | None = None  # int32 [2, N_edges]
     bond_edge_type:  np.ndarray | None = None  # uint8 [N_edges]
 

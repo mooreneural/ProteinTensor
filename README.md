@@ -26,13 +26,13 @@ for each protein in dataset:
 ```
 
 For a 100,000-structure training run this preprocessing costs **thousands of CPU-hours
-per epoch** — most of it producing identical results every time. The mmCIF file has not
+per epoch** - most of it producing identical results every time. The mmCIF file has not
 changed. The sequence has not changed. The physics has not changed. Yet every run
 recomputes everything from scratch.
 
-ProteinTensor solves this by converting the PDB entry once into a `.ptt` file — a
+ProteinTensor solves this by converting the PDB entry once into a `.ptt` file - a
 Zarr-backed, LZ4-compressed, memory-mappable store that holds every tensor a model
-needs — and then loading those tensors directly at training time with zero parsing.
+needs - and then loading those tensors directly at training time with zero parsing.
 
 ```
 once:   mmCIF  ->  ProteinTensor (.ptt)
@@ -58,7 +58,7 @@ well-defined intermediate format that works with PyTorch, JAX, and NumPy without
 writing custom loaders for every model.
 
 ProteinTensor is to structural biology what Parquet is to analytics, what safetensors
-is to model weights, and what ONNX is to model exchange — a common, open, high-
+is to model weights, and what ONNX is to model exchange - a common, open, high-
 performance format that turns a recurring computational tax into a one-time cost.
 
 ---
@@ -72,33 +72,33 @@ Proteins span the full range from a 76-residue domain to a 3,525-residue CRISPR 
 
 | Structure | Method | Res | MSA seqs | mmCIF parse | ptt: full | ptt: backbone | ptt: bonds | ptt: MSA | ptt: dist mx |
 |---|---|---|---|---|---|---|---|---|---|
-| 1UBQ — Ubiquitin | X-ray | 76 | 512 | 7.4 ms | 2.9 ms | 1.2 ms | 0.7 ms | 1.6 ms | 0.8 ms |
-| 6LU7 — SARS-CoV-2 Mpro | X-ray | 312 | 1,024 | 28.7 ms | 2.9 ms | 1.2 ms | 0.7 ms | 5.1 ms | 1.6 ms |
-| 4HHB — Hemoglobin | X-ray | 574 | 2,048 | 55.0 ms | 2.9 ms | 1.2 ms | 0.7 ms | 11.9 ms | 3.4 ms |
-| 6M0J — ACE2 + RBD | Cryo-EM | 791 | 2,048 | 73.1 ms | 2.9 ms | 1.2 ms | 0.7 ms | 14.9 ms | 6.4 ms |
-| 6VXX — Spike trimer | Cryo-EM | 2,916 | 8,192 | 278.5 ms | 3.3 ms | 1.3 ms | 0.9 ms | 207.8 ms | 67.8 ms |
-| 6OHW — Cas12a | Cryo-EM | 3,525 | 8,192 | 345.5 ms | 3.3 ms | 1.2 ms | 0.9 ms | 240.3 ms | 105.7 ms |
+| 1UBQ - Ubiquitin | X-ray | 76 | 512 | 7.4 ms | 2.9 ms | 1.2 ms | 0.7 ms | 1.6 ms | 0.8 ms |
+| 6LU7 - SARS-CoV-2 Mpro | X-ray | 312 | 1,024 | 28.7 ms | 2.9 ms | 1.2 ms | 0.7 ms | 5.1 ms | 1.6 ms |
+| 4HHB - Hemoglobin | X-ray | 574 | 2,048 | 55.0 ms | 2.9 ms | 1.2 ms | 0.7 ms | 11.9 ms | 3.4 ms |
+| 6M0J - ACE2 + RBD | Cryo-EM | 791 | 2,048 | 73.1 ms | 2.9 ms | 1.2 ms | 0.7 ms | 14.9 ms | 6.4 ms |
+| 6VXX - Spike trimer | Cryo-EM | 2,916 | 8,192 | 278.5 ms | 3.3 ms | 1.3 ms | 0.9 ms | 207.8 ms | 67.8 ms |
+| 6OHW - Cas12a | Cryo-EM | 3,525 | 8,192 | 345.5 ms | 3.3 ms | 1.2 ms | 0.9 ms | 240.3 ms | 105.7 ms |
 
 **Column definitions**
-- `ptt: full` — `read()` — all atoms, backbone, bonds, metadata
-- `ptt: backbone` — `read_backbone()` — N/CA/C/O coordinates + sequence only
-- `ptt: bonds` — `read_bonds()` — covalent graph only
-- `ptt: MSA` — `read_msa()` — MSA tokens + profile (loaded from .ptt cache)
-- `ptt: dist mx` — `read_pair_feature("distance_matrix")` — Ca-Ca distance matrix
+- `ptt: full` - `read()` - all atoms, backbone, bonds, metadata
+- `ptt: backbone` - `read_backbone()` - N/CA/C/O coordinates + sequence only
+- `ptt: bonds` - `read_bonds()` - covalent graph only
+- `ptt: MSA` - `read_msa()` - MSA tokens + profile (loaded from .ptt cache)
+- `ptt: dist mx` - `read_pair_feature("distance_matrix")` - Ca-Ca distance matrix
 
 ### Speedup vs mmCIF baseline
 
 | Structure | Res | full | backbone | bonds | MSA | dist mx |
 |---|---|---|---|---|---|---|
-| 1UBQ — Ubiquitin | 76 | 3x | 6x | 11x | 5x | 9x |
-| 6LU7 — SARS-CoV-2 Mpro | 312 | 10x | 24x | 41x | 6x | 17x |
-| 4HHB — Hemoglobin | 574 | 19x | 44x | 76x | 5x | 16x |
-| 6M0J — ACE2 + RBD | 791 | 25x | 61x | 98x | 5x | 11x |
-| 6VXX — Spike trimer | 2,916 | 85x | 217x | 304x | 1x* | 4x |
-| 6OHW — Cas12a | 3,525 | 106x | 281x | 366x | 1x* | 3x |
+| 1UBQ - Ubiquitin | 76 | 3x | 6x | 11x | 5x | 9x |
+| 6LU7 - SARS-CoV-2 Mpro | 312 | 10x | 24x | 41x | 6x | 17x |
+| 4HHB - Hemoglobin | 574 | 19x | 44x | 76x | 5x | 16x |
+| 6M0J - ACE2 + RBD | 791 | 25x | 61x | 98x | 5x | 11x |
+| 6VXX - Spike trimer | 2,916 | 85x | 217x | 304x | 1x* | 4x |
+| 6OHW - Cas12a | 3,525 | 106x | 281x | 366x | 1x* | 3x |
 
 *MSA speedup shown as 1x vs mmCIF parse because both are in the same time range for
-large proteins — the real MSA comparison is vs JackHMMER generation (see below).
+large proteins - the real MSA comparison is vs JackHMMER generation (see below).
 
 ### Scale projection: 100,000 structures, one training epoch
 
@@ -126,7 +126,9 @@ pay disk space once to avoid paying GPU-hours and CPU-hours repeatedly.
 ## Install
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev]"           # core + dev tools
+pip install -e ".[cloud]"         # adds fsspec, s3fs, gcsfs for remote reads
+pip install -e ".[dev,cloud]"     # everything
 ```
 
 Requires Python >= 3.9, `gemmi`, `zarr`, `numpy`, `click`, `rich`.
@@ -227,7 +229,7 @@ emb = pt.read_embedding("1abc.ptt", "esm2_t33_650M_UR50D")
 emb.data.shape      # (N_res, 1280)  float32  (upcast from float16 on load)
 
 # ------ Lazy / zero-copy access ------
-positions = pt.mmap_positions("1abc.ptt")       # zarr.Array — no full load
+positions = pt.mmap_positions("1abc.ptt")       # zarr.Array - no full load
 backbone  = pt.mmap_backbone("1abc.ptt")        # [N_res, 4, 3]
 msa_lazy  = pt.mmap_msa_tokens("1abc.ptt", "uniref90")  # [N_seq, N_res]
 emb_lazy  = pt.mmap_embedding("1abc.ptt", "esm2_t33_650M_UR50D")
@@ -246,6 +248,42 @@ tokens = torch.from_numpy(data.sequence_tokens)  # (N_res,)
 import jax.numpy as jnp
 data   = pt.read("1abc.ptt")
 coords = jnp.array(data.atom_positions)
+
+# ------ Cloud streaming ------
+# Read a single structure directly from S3 (no local download)
+data = pt.read("s3://my-bucket/proteins/1abc.ptt")
+bb   = pt.read_backbone("s3://my-bucket/proteins/1abc.ptt")
+arr  = pt.mmap_positions("s3://my-bucket/proteins/1abc.ptt")  # lazy remote array
+
+# Open a dataset stored in cloud
+ds = pt.ProteinDataset("s3://my-bucket/training.ptt")
+
+# Prepare a local .ptt for fast remote reads before uploading (one-time)
+pt.consolidate("1abc.ptt")                  # writes .zmetadata
+# aws s3 cp -r 1abc.ptt s3://my-bucket/proteins/1abc.ptt
+
+# Pass storage_options for credentials or custom endpoints
+data = pt.read(
+    "s3://my-bucket/proteins/1abc.ptt",
+    storage_options={"key": "ACCESS_KEY", "secret": "SECRET_KEY"},
+)
+
+# ------ Multi-structure dataset ------
+pt.create_dataset("training.ptt")
+for ptt_file in Path("ptt_files").glob("*.ptt"):
+    pt.add_to_dataset("training.ptt", ptt_file)
+
+ds = pt.ProteinDataset("training.ptt")
+len(ds)               # number of structures
+ds[0]                 # ProteinTensorData by index
+ds["1ABC"]            # ProteinTensorData by PDB ID (case-insensitive)
+
+# PyTorch DataLoader - collate pads variable-length sequences
+from torch.utils.data import DataLoader
+loader = DataLoader(ds, batch_size=8, collate_fn=pt.ProteinDataset.collate)
+for batch in loader:
+    coords  = torch.from_numpy(batch["atom_positions"])   # (B, max_atoms, 3)
+    pad     = torch.from_numpy(batch["padding_mask"])     # (B, max_res)  True=real
 ```
 
 ---
@@ -290,16 +328,32 @@ structure.ptt/                      Zarr directory store (v0.7)
         └── data           [N_res, D]        float32 or float16, chunked 256xD
 ```
 
+### Multi-structure dataset layout
+
+```
+dataset.ptt/                        Zarr directory store
+├── .zattrs                         format="proteintensor-dataset", version, num_structures
+└── structures/
+    ├── 000000/                     zero-padded integer key
+    │   └── (same layout as single .ptt above)
+    ├── 000001/
+    │   └── ...
+    └── ...
+```
+
+Each sub-group under `structures/` is identical to a standalone `.ptt` root, so all single-structure reader helpers work on sliced groups.
+
 ---
 
 ## Supported models
 
 | Model | Adapter | Status |
 |---|---|---|
-| Boltz 2 | `BoltzAdapter` | Verified — end-to-end prediction on RTX 5080 |
+| Boltz 2 | `BoltzAdapter` | Verified - end-to-end prediction on RTX 5080 |
 | Boltz 1 | `BoltzAdapter(model="boltz1")` | Supported |
-| OpenFold | — | Roadmap |
-| RoseTTAFold-All-Atom | — | Roadmap |
+| OpenFold | - | Planned |
+| RoseTTAFold-All-Atom | - | Planned |
+| Chai-1 | - | Planned |
 
 ---
 
@@ -309,18 +363,36 @@ structure.ptt/                      Zarr directory store (v0.7)
 pytest tests/ -v
 ```
 
-84 tests across structure roundtrip, backbone/bonds/MSA/pairs/embeddings,
-A3M parsing, Boltz adapter (YAML + A3M generation, real-protein integration).
+106 tests across structure roundtrip, backbone/bonds/MSA/pairs/embeddings,
+A3M parsing, Boltz adapter, multi-structure dataset, and cloud streaming
+(memory:// fsspec - no real cloud account required).
 
 ---
 
 ## Roadmap
 
 - [x] Backbone-only dense layout `[N_res, 4, 3]` for faster backbone access
-- [x] Bond graph storage (`edge_index`) — SINGLE / DOUBLE / AROMATIC / PEPTIDE / DISULFIDE
-- [x] MSA feature caching — A3M parser, provenance tracking, multi-source per file
-- [x] Pair representation block `[N, N, C]` — distance matrix, contact map, generic named tensors
-- [x] Pre-embedded ESM2 / ESM3 features — float16 storage, provenance hash, lazy mmap access
-- [x] Model adapters: Boltz2 — end-to-end prediction from `.ptt` verified on RTX 5080
-- [ ] Multi-structure dataset container — one Zarr store, N structures, batched loading
-- [ ] Cloud streaming — S3 / GCS via `fsspec`, training directly from object storage
+- [x] Bond graph storage (`edge_index`) - SINGLE / DOUBLE / AROMATIC / PEPTIDE / DISULFIDE
+- [x] MSA feature caching - A3M parser, provenance tracking, multi-source per file
+- [x] Pair representation block `[N, N, C]` - distance matrix, contact map, generic named tensors
+- [x] Pre-embedded ESM2 / ESM3 features - float16 storage, provenance hash, lazy mmap access
+- [x] Model adapters: Boltz2 - end-to-end prediction from `.ptt` verified on RTX 5080
+- [x] Multi-structure dataset container - one Zarr store, N structures, PyTorch DataLoader compatible
+- [x] Cloud streaming - S3 / GCS via `fsspec`, training directly from object storage
+
+**Model coverage**
+- [ ] OpenFold adapter
+- [ ] RoseTTAFold-All-Atom adapter
+- [ ] Chai-1 adapter
+
+**Data pipeline**
+- [ ] Batch convert CLI - convert entire PDB directories in parallel with progress reporting
+- [ ] Sequence-identity dataset splitting - MMseqs2-based cluster splits to prevent data leakage between train / val / test
+
+**Format extensions**
+- [ ] Ligand / small-molecule support - SMILES, CCD-based atom graphs, binding site annotations for drug-protein interaction models
+- [ ] MD trajectory storage - time axis `[N_frames, N_atoms, 3]` for conformational ensembles and AlphaFold 3 diffusion trajectories
+
+**Performance**
+- [ ] Parallel DataLoader workers - thread-safe multi-worker prefetching verified under PyTorch DDP
+- [ ] Format version migration CLI - upgrade .ptt files in-place across version bumps

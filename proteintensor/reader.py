@@ -7,11 +7,21 @@ from .schema import ProteinTensorData, BackboneData, BondData
 from .msa import MsaData
 from .pairs import PairFeature
 from .embeddings import EmbeddingData
+from .remote import open_store
 
 
-def read(path: str | Path) -> ProteinTensorData:
-    """Load a .ptt file fully into memory."""
-    store = zarr.open(str(path), mode="r")
+def read(
+    path: str | Path,
+    storage_options: dict | None = None,
+) -> ProteinTensorData:
+    """Load a .ptt file fully into memory.
+
+    Parameters
+    ----------
+    path             Local path or fsspec URL (s3://, gs://, memory://, ...).
+    storage_options  fsspec kwargs forwarded for remote paths (credentials, etc.).
+    """
+    store = open_store(path, storage_options=storage_options)
     attrs = dict(store.attrs)
 
     bb_positions   = store["backbone/positions"][:] if "backbone" in store else None
@@ -39,19 +49,28 @@ def read(path: str | Path) -> ProteinTensorData:
     )
 
 
-def mmap_positions(path: str | Path) -> zarr.Array:
+def mmap_positions(
+    path: str | Path,
+    storage_options: dict | None = None,
+) -> zarr.Array:
     """Return a lazy (zero-copy) view of atom positions without loading the full file."""
-    return zarr.open(str(path), mode="r")["atoms/positions"]
+    return open_store(path, storage_options=storage_options)["atoms/positions"]
 
 
-def mmap_tokens(path: str | Path) -> zarr.Array:
+def mmap_tokens(
+    path: str | Path,
+    storage_options: dict | None = None,
+) -> zarr.Array:
     """Return a lazy view of sequence tokens."""
-    return zarr.open(str(path), mode="r")["sequence/tokens"]
+    return open_store(path, storage_options=storage_options)["sequence/tokens"]
 
 
-def read_backbone(path: str | Path) -> BackboneData:
-    """Load only backbone coordinates and sequence — skips all heavy-atom data."""
-    store = zarr.open(str(path), mode="r")
+def read_backbone(
+    path: str | Path,
+    storage_options: dict | None = None,
+) -> BackboneData:
+    """Load only backbone coordinates and sequence - skips all heavy-atom data."""
+    store = open_store(path, storage_options=storage_options)
     if "backbone" not in store:
         raise KeyError(f"No backbone group in {path}. Re-convert with proteintensor>=0.2.")
     return BackboneData(
@@ -63,9 +82,12 @@ def read_backbone(path: str | Path) -> BackboneData:
     )
 
 
-def read_bonds(path: str | Path) -> BondData:
-    """Load only the bond graph — skips coordinates, sequence, and backbone."""
-    store = zarr.open(str(path), mode="r")
+def read_bonds(
+    path: str | Path,
+    storage_options: dict | None = None,
+) -> BondData:
+    """Load only the bond graph - skips coordinates, sequence, and backbone."""
+    store = open_store(path, storage_options=storage_options)
     if "bonds" not in store:
         raise KeyError(f"No bonds group in {path}. Re-convert with proteintensor>=0.3.")
     return BondData(
@@ -75,25 +97,35 @@ def read_bonds(path: str | Path) -> BondData:
     )
 
 
-def mmap_backbone(path: str | Path) -> zarr.Array:
+def mmap_backbone(
+    path: str | Path,
+    storage_options: dict | None = None,
+) -> zarr.Array:
     """Return a lazy [N_res, 4, 3] view of backbone positions."""
-    store = zarr.open(str(path), mode="r")
+    store = open_store(path, storage_options=storage_options)
     if "backbone" not in store:
         raise KeyError(f"No backbone group in {path}. Re-convert with proteintensor>=0.2.")
     return store["backbone/positions"]
 
 
-def list_msas(path: str | Path) -> list[str]:
+def list_msas(
+    path: str | Path,
+    storage_options: dict | None = None,
+) -> list[str]:
     """Return the list of MSA source names stored in a .ptt file."""
-    store = zarr.open(str(path), mode="r")
+    store = open_store(path, storage_options=storage_options)
     if "msa" not in store:
         return []
     return list(store["msa"].keys())
 
 
-def read_msa(path: str | Path, source: str = "default") -> MsaData:
+def read_msa(
+    path: str | Path,
+    source: str = "default",
+    storage_options: dict | None = None,
+) -> MsaData:
     """Load the MSA for one source fully into memory."""
-    store = zarr.open(str(path), mode="r")
+    store = open_store(path, storage_options=storage_options)
     _require_msa_source(store, path, source)
     grp   = store[f"msa/{source}"]
     attrs = dict(grp.attrs)
@@ -111,28 +143,39 @@ def read_msa(path: str | Path, source: str = "default") -> MsaData:
     )
 
 
-def mmap_msa_tokens(path: str | Path, source: str = "default") -> zarr.Array:
-    """Return a lazy [N_seq, N_res] view of MSA tokens — no full load."""
-    store = zarr.open(str(path), mode="r")
+def mmap_msa_tokens(
+    path: str | Path,
+    source: str = "default",
+    storage_options: dict | None = None,
+) -> zarr.Array:
+    """Return a lazy [N_seq, N_res] view of MSA tokens - no full load."""
+    store = open_store(path, storage_options=storage_options)
     _require_msa_source(store, path, source)
     return store[f"msa/{source}/tokens"]
 
 
-def list_pair_features(path: str | Path) -> list[str]:
+def list_pair_features(
+    path: str | Path,
+    storage_options: dict | None = None,
+) -> list[str]:
     """Return the names of all pair feature tensors stored in a .ptt file."""
-    store = zarr.open(str(path), mode="r")
+    store = open_store(path, storage_options=storage_options)
     if "pairs" not in store:
         return []
     return list(store["pairs"].keys())
 
 
-def read_pair_feature(path: str | Path, name: str) -> PairFeature:
+def read_pair_feature(
+    path: str | Path,
+    name: str,
+    storage_options: dict | None = None,
+) -> PairFeature:
     """Load a named pair feature tensor fully into memory.
 
     Returns a PairFeature whose .data has shape [N_res, N_res, C].
     For single-channel features (C=1) you can index data[:, :, 0] directly.
     """
-    store = zarr.open(str(path), mode="r")
+    store = open_store(path, storage_options=storage_options)
     _require_pair(store, path, name)
     grp   = store[f"pairs/{name}"]
     attrs = dict(grp.attrs)
@@ -147,24 +190,35 @@ def read_pair_feature(path: str | Path, name: str) -> PairFeature:
     )
 
 
-def mmap_pair_feature(path: str | Path, name: str) -> zarr.Array:
-    """Return a lazy [N_res, N_res, C] view — slice without loading the full tensor."""
-    store = zarr.open(str(path), mode="r")
+def mmap_pair_feature(
+    path: str | Path,
+    name: str,
+    storage_options: dict | None = None,
+) -> zarr.Array:
+    """Return a lazy [N_res, N_res, C] view - slice without loading the full tensor."""
+    store = open_store(path, storage_options=storage_options)
     _require_pair(store, path, name)
     return store[f"pairs/{name}/data"]
 
 
-def list_embeddings(path: str | Path) -> list[str]:
+def list_embeddings(
+    path: str | Path,
+    storage_options: dict | None = None,
+) -> list[str]:
     """Return model names of all embeddings stored in a .ptt file."""
-    store = zarr.open(str(path), mode="r")
+    store = open_store(path, storage_options=storage_options)
     if "embeddings" not in store:
         return []
     return list(store["embeddings"].keys())
 
 
-def read_embedding(path: str | Path, model: str) -> EmbeddingData:
+def read_embedding(
+    path: str | Path,
+    model: str,
+    storage_options: dict | None = None,
+) -> EmbeddingData:
     """Load a named PLM embedding fully into memory as float32."""
-    store = zarr.open(str(path), mode="r")
+    store = open_store(path, storage_options=storage_options)
     _require_embedding(store, path, model)
     grp   = store[f"embeddings/{model}"]
     attrs = dict(grp.attrs)
@@ -179,9 +233,13 @@ def read_embedding(path: str | Path, model: str) -> EmbeddingData:
     )
 
 
-def mmap_embedding(path: str | Path, model: str) -> zarr.Array:
-    """Return a lazy [N_res, D] view of an embedding — no full load."""
-    store = zarr.open(str(path), mode="r")
+def mmap_embedding(
+    path: str | Path,
+    model: str,
+    storage_options: dict | None = None,
+) -> zarr.Array:
+    """Return a lazy [N_res, D] view of an embedding - no full load."""
+    store = open_store(path, storage_options=storage_options)
     _require_embedding(store, path, model)
     return store[f"embeddings/{model}/data"]
 

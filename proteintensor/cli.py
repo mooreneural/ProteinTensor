@@ -18,7 +18,7 @@ SUPPORTED_INPUT = {".cif", ".mmcif", ".pdb", ".ent"}
 @click.group()
 @click.version_option(package_name="proteintensor")
 def main():
-    """ProteinTensor — AI-native biomolecular tensor format."""
+    """ProteinTensor - AI-native biomolecular tensor format."""
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +115,7 @@ def embeddings_cmd(path: Path):
         return
 
     store = zarr.open(str(path), mode="r")
-    tbl = Table(title=f"Embeddings — {path.name}")
+    tbl = Table(title=f"Embeddings - {path.name}")
     tbl.add_column("Model",    style="bold")
     tbl.add_column("Layer",    justify="right")
     tbl.add_column("Shape",    justify="right")
@@ -177,7 +177,7 @@ def pairs(path: Path, compute: bool, threshold: float):
         return
 
     store = zarr.open(str(path), mode="r")
-    tbl = Table(title=f"Pair features — {path.name}")
+    tbl = Table(title=f"Pair features - {path.name}")
     tbl.add_column("Name",        style="bold")
     tbl.add_column("Shape",       justify="right")
     tbl.add_column("Dtype",       justify="right")
@@ -269,7 +269,7 @@ def benchmark(input_path: Path, ptt_path: Path | None, rounds: int):
     n_atoms = store.attrs["num_atoms"]
 
     console.print(
-        f"Benchmarking [bold]{rounds}[/bold] rounds — "
+        f"Benchmarking [bold]{rounds}[/bold] rounds - "
         f"[cyan]{n_res:,}[/cyan] residues, [cyan]{n_atoms:,}[/cyan] atoms\n"
     )
 
@@ -285,7 +285,7 @@ def benchmark(input_path: Path, ptt_path: Path | None, rounds: int):
     tbl.add_column("Speedup",       justify="right", style="green")
 
     def _row(label: str, a: float, b: float) -> None:
-        tbl.add_row(label, f"{a:.1f} ms", f"{b:.1f} ms", f"{a/b:.1f}x" if b > 0 else "—")
+        tbl.add_row(label, f"{a:.1f} ms", f"{b:.1f} ms", f"{a/b:.1f}x" if b > 0 else "-")
 
     _row("Median", float(np.median(mmcif_ms)), float(np.median(ptt_ms)))
     _row("Mean",   float(np.mean(mmcif_ms)),   float(np.mean(ptt_ms)))

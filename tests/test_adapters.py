@@ -93,7 +93,7 @@ def test_chains_multi_chain():
 
 
 # ---------------------------------------------------------------------------
-# write_input() — YAML structure
+# write_input() - YAML structure
 # ---------------------------------------------------------------------------
 
 def test_write_input_creates_yaml():

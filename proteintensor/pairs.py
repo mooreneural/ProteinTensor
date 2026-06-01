@@ -14,7 +14,7 @@ Generic API
   add_pair_feature         store any [N_res, N_res] or [N_res, N_res, C] array
   read_pair_feature        load a named pair tensor
   list_pair_features       list stored names
-  mmap_pair_feature        lazy zarr.Array — slice without full load
+  mmap_pair_feature        lazy zarr.Array - slice without full load
 
 Size note
 ---------

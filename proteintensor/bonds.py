@@ -1,7 +1,7 @@
 """
 Bond type constants and covalent bond tables for the 20 standard amino acids.
 
-Graph convention: bidirectional — every bond is stored as both (u->v) and (v->u),
+Graph convention: bidirectional - every bond is stored as both (u->v) and (v->u),
 matching PyTorch Geometric / DGL expectations.
 """
 from __future__ import annotations
@@ -120,7 +120,7 @@ def build(
 
     Returns
     -------
-    edge_index : int32 [2, N_edges]   (src, dst) pairs — both directions stored
+    edge_index : int32 [2, N_edges]   (src, dst) pairs - both directions stored
     edge_type  : uint8 [N_edges]
     """
     srcs: list[int] = []

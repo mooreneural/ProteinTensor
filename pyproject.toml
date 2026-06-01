@@ -19,8 +19,9 @@ dependencies = [
 
 [project.optional-dependencies]
 torch = ["torch>=2.0"]
-jax  = ["jax>=0.4"]
-dev  = ["pytest>=7", "pytest-benchmark", "pytest-cov"]
+jax   = ["jax>=0.4"]
+cloud = ["fsspec>=2023.1", "s3fs>=2023.1", "gcsfs>=2023.1"]
+dev   = ["pytest>=7", "pytest-benchmark", "pytest-cov", "fsspec>=2023.1"]
 
 [project.scripts]
 proteintensor = "proteintensor.cli:main"

@@ -65,7 +65,7 @@ class MsaData:
     profile:         np.ndarray   # float32 [N_res, MSA_VOCAB_SIZE]  per-position frequencies
     deletion_mean:   np.ndarray   # float32 [N_res]  mean deletions per position
 
-    # Provenance — required for cache invalidation
+    # Provenance - required for cache invalidation
     sequence_hash: str   # SHA-256 of the query sequence (row 0, gaps stripped)
     tool:          str   # "jackhammer" | "hhblits" | "mmseqs2" | "colabfold"
     tool_version:  str
@@ -190,7 +190,7 @@ def _read_a3m_sequences(text: str) -> list[str]:
 def _parse_a3m_row(seq: str) -> tuple[str, np.ndarray]:
     """Split one A3M row into aligned characters and per-column deletion counts.
 
-    Lowercase letters and '.' are insertions — they increment the deletion
+    Lowercase letters and '.' are insertions - they increment the deletion
     counter for the next aligned column and are excluded from the output.
     """
     aligned: list[str] = []

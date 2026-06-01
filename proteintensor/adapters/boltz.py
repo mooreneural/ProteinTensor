@@ -131,7 +131,7 @@ class BoltzAdapter:
                 a3m_paths[cid] = str(a3m_path.resolve())
                 col += n
         else:
-            # Single-sequence A3M — query only, no homologs
+            # Single-sequence A3M - query only, no homologs
             for cid, seq in chain_seqs.items():
                 a3m_path = msa_dir / f"{cid}.a3m"
                 a3m_path.write_text(f">query\n{seq}\n", encoding="utf-8")

@@ -31,20 +31,22 @@ from .bonds import (
     BOND_DISULFIDE,
     BOND_TYPE_NAMES,
 )
+from .dataset import ProteinDataset, create_dataset, add_to_dataset
+from .remote import consolidate
 
 __version__ = "0.1.0"
 
 __all__ = [
-    # I/O — structure
+    # I/O - structure
     "read", "write",
     "read_backbone", "read_bonds",
     "mmap_positions", "mmap_tokens", "mmap_backbone",
-    # I/O — MSA
+    # I/O - MSA
     "read_msa", "add_msa", "list_msas", "mmap_msa_tokens",
-    # I/O — pair features
+    # I/O - pair features
     "read_pair_feature", "add_pair_feature", "list_pair_features", "mmap_pair_feature",
     "compute_and_store_distances", "compute_and_store_contacts",
-    # I/O — embeddings
+    # I/O - embeddings
     "read_embedding", "add_embedding", "list_embeddings", "mmap_embedding",
     # Data containers
     "ProteinTensorData", "BackboneData", "BondData", "MsaData", "PairFeature", "EmbeddingData",
@@ -62,4 +64,8 @@ __all__ = [
     # Bond constants
     "BOND_SINGLE", "BOND_DOUBLE", "BOND_TRIPLE",
     "BOND_AROMATIC", "BOND_PEPTIDE", "BOND_DISULFIDE", "BOND_TYPE_NAMES",
+    # Dataset
+    "ProteinDataset", "create_dataset", "add_to_dataset",
+    # Cloud / remote
+    "consolidate",
 ]
