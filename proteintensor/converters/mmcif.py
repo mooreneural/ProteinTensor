@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 
 from ..schema import ProteinTensorData, AA_VOCAB, AA_UNK, BACKBONE_ATOMS, N_BACKBONE
+from ..bonds import build as build_bonds
 
 
 def from_mmcif(path: str | Path, pdb_id: str = "") -> ProteinTensorData:
@@ -42,13 +43,15 @@ def _extract(structure, pdb_id: str) -> ProteinTensorData:
     seq_tokens: list[int]    = []
     res_indices: list[int]   = []
     chain_ids: list[bytes]   = []
+    resnames: list[str]      = []
     positions: list[list]    = []
     masks: list[bool]        = []
     bfactors: list[float]    = []
     atom_starts: list[int]   = []
     atom_counts: list[int]   = []
-    bb_pos_list: list        = []   # per-residue [4, 3] arrays
-    bb_mask_list: list       = []   # per-residue [4] bool arrays
+    bb_pos_list: list        = []
+    bb_mask_list: list       = []
+    res_atom_maps: list[dict[str, int]] = []   # per-residue {atom_name: global_idx}
     cursor = 0
 
     resolution = float("nan")
@@ -80,15 +83,19 @@ def _extract(structure, pdb_id: str) -> ProteinTensorData:
             seq_tokens.append(token)
             res_indices.append(int(residue.seqid.num))
             chain_ids.append(chain_label)
+            resnames.append(resname)
 
-            # All-atom ragged storage
+            # All-atom ragged storage + atom-name -> global-index map
+            atom_name_map: dict[str, int] = {}
             n = 0
             for atom in residue:
                 pos = atom.pos
+                atom_name_map[atom.name] = cursor + n
                 positions.append([pos.x, pos.y, pos.z])
                 masks.append(True)
                 bfactors.append(float(atom.b_iso))
                 n += 1
+            res_atom_maps.append(atom_name_map)
 
             atom_starts.append(cursor)
             atom_counts.append(n)
@@ -110,17 +117,22 @@ def _extract(structure, pdb_id: str) -> ProteinTensorData:
     if not seq_tokens:
         raise ValueError(f"No polymer residues found in '{pdb_id}'")
 
+    pos_arr = np.array(positions, dtype=np.float32).reshape(-1, 3)
+    edge_index, edge_type = build_bonds(res_atom_maps, resnames, chain_ids, pos_arr)
+
     return ProteinTensorData(
         sequence_tokens=np.array(seq_tokens,  dtype=np.int32),
         residue_index=np.array(res_indices,   dtype=np.int32),
         chain_id=np.array(chain_ids,          dtype="S1"),
-        atom_positions=np.array(positions,    dtype=np.float32).reshape(-1, 3),
+        atom_positions=pos_arr,
         atom_mask=np.array(masks,             dtype=bool),
         b_factors=np.array(bfactors,          dtype=np.float32),
         residue_atom_start=np.array(atom_starts, dtype=np.int32),
         residue_atom_count=np.array(atom_counts, dtype=np.int32),
-        backbone_positions=np.stack(bb_pos_list).astype(np.float32),  # [N_res, 4, 3]
-        backbone_mask=np.stack(bb_mask_list),                          # [N_res, 4]
+        backbone_positions=np.stack(bb_pos_list).astype(np.float32),
+        backbone_mask=np.stack(bb_mask_list),
+        bond_edge_index=edge_index,
+        bond_edge_type=edge_type,
         pdb_id=pdb_id,
         resolution=resolution,
         method=method,

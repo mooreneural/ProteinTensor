@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
 
-FORMAT_VERSION = "0.2"
+FORMAT_VERSION = "0.3"
 
 AA_VOCAB: dict[str, int] = {
     "ALA": 0, "ARG": 1, "ASN": 2, "ASP": 3, "CYS": 4,
@@ -20,6 +20,14 @@ AA_1LETTER = "ARNDCQEGHILKMFPSTWYXU"
 # Canonical backbone atom order (AlphaFold / OpenFold convention)
 BACKBONE_ATOMS = ["N", "CA", "C", "O"]
 N_BACKBONE = len(BACKBONE_ATOMS)
+
+
+@dataclass
+class BondData:
+    """Covalent bond graph returned by read_bonds()."""
+    edge_index: np.ndarray   # int32 [2, N_edges]  (src, dst) — bidirectional
+    edge_type:  np.ndarray   # uint8 [N_edges]
+    num_atoms:  int
 
 
 @dataclass
@@ -52,6 +60,10 @@ class ProteinTensorData:
     # Atom order: N=0, CA=1, C=2, O=3  (missing atoms have mask=False, coords=0)
     backbone_positions: np.ndarray | None = None  # float32 [N_res, 4, 3]
     backbone_mask: np.ndarray | None = None       # bool    [N_res, 4]
+
+    # Covalent bond graph — bidirectional edges referencing atom_positions indices
+    bond_edge_index: np.ndarray | None = None  # int32 [2, N_edges]
+    bond_edge_type:  np.ndarray | None = None  # uint8 [N_edges]
 
     # Structure metadata
     pdb_id: str = ""

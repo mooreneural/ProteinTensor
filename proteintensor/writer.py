@@ -45,6 +45,12 @@ def write(data: ProteinTensorData, path: str | Path, compression: str = "blosc")
         _arr(bb, "mask",      data.backbone_mask,      "bool",    compressor)
         store.attrs["has_backbone"] = True
 
+    if data.bond_edge_index is not None and data.bond_edge_type is not None:
+        bonds = store.require_group("bonds")
+        _arr(bonds, "edge_index", data.bond_edge_index, "int32",  compressor)
+        _arr(bonds, "edge_type",  data.bond_edge_type,  "uint8",  compressor)
+        store.attrs["num_bonds"] = int(data.bond_edge_index.shape[1])
+
 
 def _arr(group: zarr.Group, name: str, data: np.ndarray, dtype: str, compressor) -> None:
     group.create_dataset(name, data=data.astype(dtype), compressor=compressor, overwrite=True)

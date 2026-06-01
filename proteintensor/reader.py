@@ -3,7 +3,7 @@ import numpy as np
 import zarr
 from pathlib import Path
 
-from .schema import ProteinTensorData, BackboneData
+from .schema import ProteinTensorData, BackboneData, BondData
 
 
 def read(path: str | Path) -> ProteinTensorData:
@@ -11,8 +11,10 @@ def read(path: str | Path) -> ProteinTensorData:
     store = zarr.open(str(path), mode="r")
     attrs = dict(store.attrs)
 
-    bb_positions = store["backbone/positions"][:] if "backbone" in store else None
-    bb_mask      = store["backbone/mask"][:]      if "backbone" in store else None
+    bb_positions   = store["backbone/positions"][:] if "backbone" in store else None
+    bb_mask        = store["backbone/mask"][:]      if "backbone" in store else None
+    bond_edge_idx  = store["bonds/edge_index"][:]   if "bonds"    in store else None
+    bond_edge_type = store["bonds/edge_type"][:]    if "bonds"    in store else None
 
     return ProteinTensorData(
         sequence_tokens=store["sequence/tokens"][:],
@@ -25,6 +27,8 @@ def read(path: str | Path) -> ProteinTensorData:
         residue_atom_count=store["structure/residue_atom_count"][:],
         backbone_positions=bb_positions,
         backbone_mask=bb_mask,
+        bond_edge_index=bond_edge_idx,
+        bond_edge_type=bond_edge_type,
         pdb_id=attrs.get("pdb_id", ""),
         resolution=float(attrs["resolution"]) if attrs.get("resolution") is not None else float("nan"),
         method=attrs.get("method", ""),
@@ -53,6 +57,18 @@ def read_backbone(path: str | Path) -> BackboneData:
         sequence_tokens=store["sequence/tokens"][:],
         residue_index=store["sequence/residue_index"][:],
         chain_id=store["sequence/chain_id"][:],
+    )
+
+
+def read_bonds(path: str | Path) -> BondData:
+    """Load only the bond graph — skips coordinates, sequence, and backbone."""
+    store = zarr.open(str(path), mode="r")
+    if "bonds" not in store:
+        raise KeyError(f"No bonds group in {path}. Re-convert with proteintensor>=0.3.")
+    return BondData(
+        edge_index=store["bonds/edge_index"][:],
+        edge_type=store["bonds/edge_type"][:],
+        num_atoms=int(store.attrs.get("num_atoms", 0)),
     )
 
 

@@ -220,6 +220,148 @@ def test_read_backbone_raises_on_missing_group():
             read_backbone(p)
 
 
+def test_bonds_roundtrip():
+    from proteintensor import read, write
+    from proteintensor.bonds import BOND_PEPTIDE, BOND_SINGLE
+    rng = np.random.default_rng(7)
+    n_edges = 40
+    data = _dummy()
+    data.bond_edge_index = rng.integers(0, data.atom_positions.shape[0], (2, n_edges), dtype=np.int32)
+    data.bond_edge_type  = np.full(n_edges, BOND_SINGLE, dtype=np.uint8)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        p = Path(tmp) / "test.ptt"
+        write(data, p)
+        loaded = read(p)
+
+    assert loaded.bond_edge_index is not None
+    assert loaded.bond_edge_type  is not None
+    np.testing.assert_array_equal(data.bond_edge_index, loaded.bond_edge_index)
+    np.testing.assert_array_equal(data.bond_edge_type,  loaded.bond_edge_type)
+
+
+def test_read_bonds_only():
+    from proteintensor import read_bonds, write
+    from proteintensor.schema import BondData
+    from proteintensor.bonds import BOND_AROMATIC
+    rng = np.random.default_rng(8)
+    n_edges = 20
+    data = _dummy()
+    data.bond_edge_index = rng.integers(0, data.atom_positions.shape[0], (2, n_edges), dtype=np.int32)
+    data.bond_edge_type  = np.full(n_edges, BOND_AROMATIC, dtype=np.uint8)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        p = Path(tmp) / "test.ptt"
+        write(data, p)
+        bonds = read_bonds(p)
+
+    assert isinstance(bonds, BondData)
+    assert bonds.edge_index.shape == (2, n_edges)
+    assert bonds.edge_type.shape  == (n_edges,)
+
+
+def test_bonds_build_peptide_connectivity():
+    """ALA-ALA-ALA chain must have 2 peptide bonds at C->N junctions."""
+    from proteintensor.bonds import build, BOND_PEPTIDE
+    # Minimal atom layout: each ALA has N(0), CA(1), C(2), O(3), CB(4)
+    # Residue 0: atoms 0-4, Residue 1: atoms 5-9, Residue 2: atoms 10-14
+    maps = [
+        {"N": 0, "CA": 1, "C": 2, "O": 3, "CB": 4},
+        {"N": 5, "CA": 6, "C": 7, "O": 8, "CB": 9},
+        {"N": 10, "CA": 11, "C": 12, "O": 13, "CB": 14},
+    ]
+    resnames  = ["ALA", "ALA", "ALA"]
+    chain_ids = [b"A", b"A", b"A"]
+    positions = np.zeros((15, 3), dtype=np.float32)
+
+    edge_index, edge_type = build(maps, resnames, chain_ids, positions)
+
+    # Find peptide edges
+    peptide_mask = edge_type == BOND_PEPTIDE
+    peptide_edges = set(map(tuple, edge_index[:, peptide_mask].T.tolist()))
+
+    assert (2, 5)  in peptide_edges, "Missing C0->N1 peptide bond"
+    assert (5, 2)  in peptide_edges, "Missing N1->C0 reverse"
+    assert (7, 10) in peptide_edges, "Missing C1->N2 peptide bond"
+    assert (10, 7) in peptide_edges, "Missing N2->C1 reverse"
+
+
+def test_bonds_no_peptide_across_chains():
+    """Peptide bonds must not be added between different chains."""
+    from proteintensor.bonds import build, BOND_PEPTIDE
+    maps = [
+        {"N": 0, "CA": 1, "C": 2, "O": 3},
+        {"N": 4, "CA": 5, "C": 6, "O": 7},
+    ]
+    resnames  = ["GLY", "GLY"]
+    chain_ids = [b"A", b"B"]   # different chains
+    positions = np.zeros((8, 3), dtype=np.float32)
+
+    edge_index, edge_type = build(maps, resnames, chain_ids, positions)
+    assert (BOND_PEPTIDE not in edge_type), "Peptide bond incorrectly added across chains"
+
+
+def test_bonds_disulfide_detection():
+    """Two CYS SG atoms within 2.05 A must produce BOND_DISULFIDE edges."""
+    from proteintensor.bonds import build, BOND_DISULFIDE
+    # CYS-GLY-CYS, SG atoms at indices 4 and 9
+    maps = [
+        {"N": 0, "CA": 1, "C": 2, "O": 3, "CB": 4, "SG": 5},
+        {"N": 6, "CA": 7, "C": 8, "O": 9},
+        {"N": 10, "CA": 11, "C": 12, "O": 13, "CB": 14, "SG": 15},
+    ]
+    resnames  = ["CYS", "GLY", "CYS"]
+    chain_ids = [b"A", b"A", b"A"]
+    positions = np.zeros((16, 3), dtype=np.float32)
+    positions[5]  = [0.0, 0.0, 0.0]
+    positions[15] = [2.0, 0.0, 0.0]  # 2.0 Å apart -> disulfide
+
+    edge_index, edge_type = build(maps, resnames, chain_ids, positions)
+    ds_mask = edge_type == BOND_DISULFIDE
+    assert ds_mask.sum() == 2, "Expected 2 disulfide edges (bidirectional)"
+    ds_edges = set(map(tuple, edge_index[:, ds_mask].T.tolist()))
+    assert (5, 15) in ds_edges and (15, 5) in ds_edges
+
+
+def test_bonds_no_disulfide_far_sg():
+    """SG atoms > 2.5 Å apart must NOT be connected."""
+    from proteintensor.bonds import build, BOND_DISULFIDE
+    maps = [
+        {"N": 0, "CA": 1, "C": 2, "O": 3, "CB": 4, "SG": 5},
+        {"N": 6, "CA": 7, "C": 8, "O": 9, "CB": 10, "SG": 11},
+    ]
+    resnames  = ["CYS", "CYS"]
+    chain_ids = [b"A", b"A"]
+    positions = np.zeros((12, 3), dtype=np.float32)
+    positions[5]  = [0.0, 0.0, 0.0]
+    positions[11] = [5.0, 0.0, 0.0]  # 5.0 Å apart -> no disulfide
+
+    edge_index, edge_type = build(maps, resnames, chain_ids, positions)
+    assert BOND_DISULFIDE not in edge_type
+
+
+def test_bonds_missing_field_is_none():
+    from proteintensor import read, write
+    data = _dummy()
+    # Don't set bond fields (they default to None)
+    with tempfile.TemporaryDirectory() as tmp:
+        p = Path(tmp) / "test.ptt"
+        write(data, p)
+        loaded = read(p)
+    assert loaded.bond_edge_index is None
+    assert loaded.bond_edge_type  is None
+
+
+def test_read_bonds_raises_on_missing_group():
+    from proteintensor import read_bonds, write
+    data = _dummy()
+    with tempfile.TemporaryDirectory() as tmp:
+        p = Path(tmp) / "test.ptt"
+        write(data, p)
+        with pytest.raises(KeyError, match="bonds"):
+            read_bonds(p)
+
+
 def test_nan_resolution_survives_roundtrip():
     from proteintensor import read, write
     data = _dummy()
