@@ -1,14 +1,16 @@
 from .reader import (
-    read, read_backbone, read_bonds, read_msa, read_pair_feature,
-    list_msas, list_pair_features,
-    mmap_positions, mmap_tokens, mmap_backbone, mmap_msa_tokens, mmap_pair_feature,
+    read, read_backbone, read_bonds, read_msa, read_pair_feature, read_embedding,
+    list_msas, list_pair_features, list_embeddings,
+    mmap_positions, mmap_tokens, mmap_backbone, mmap_msa_tokens,
+    mmap_pair_feature, mmap_embedding,
 )
 from .writer import (
-    write, add_msa, add_pair_feature,
+    write, add_msa, add_pair_feature, add_embedding,
     compute_and_store_distances, compute_and_store_contacts,
 )
 from .msa import MsaData, from_a3m, compute_profile, MSA_GAP, MSA_MASK, MSA_VOCAB_SIZE
 from .pairs import PairFeature, compute_distance_matrix, compute_contact_map
+from .embeddings import EmbeddingData, KNOWN_DIMS, sequence_hash as embedding_sequence_hash
 from .schema import (
     ProteinTensorData,
     BackboneData,
@@ -41,13 +43,17 @@ __all__ = [
     # I/O — pair features
     "read_pair_feature", "add_pair_feature", "list_pair_features", "mmap_pair_feature",
     "compute_and_store_distances", "compute_and_store_contacts",
+    # I/O — embeddings
+    "read_embedding", "add_embedding", "list_embeddings", "mmap_embedding",
     # Data containers
-    "ProteinTensorData", "BackboneData", "BondData", "MsaData", "PairFeature",
+    "ProteinTensorData", "BackboneData", "BondData", "MsaData", "PairFeature", "EmbeddingData",
     # MSA utilities
     "from_a3m", "compute_profile",
     "MSA_GAP", "MSA_MASK", "MSA_VOCAB_SIZE",
     # Pair utilities
     "compute_distance_matrix", "compute_contact_map",
+    # Embedding utilities
+    "KNOWN_DIMS", "embedding_sequence_hash",
     # Schema constants
     "AA_VOCAB", "AA_VOCAB_SIZE", "BACKBONE_ATOMS", "N_BACKBONE", "FORMAT_VERSION",
     # Bond constants

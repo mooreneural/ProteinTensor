@@ -99,6 +99,50 @@ def info(path: Path):
 
 
 # ---------------------------------------------------------------------------
+# embeddings
+# ---------------------------------------------------------------------------
+
+@main.command("embeddings")
+@click.argument("path", type=click.Path(exists=True, path_type=Path))
+def embeddings_cmd(path: Path):
+    """Show PLM embeddings stored in a .ptt file."""
+    from .reader import list_embeddings
+    import zarr, datetime
+
+    features = list_embeddings(path)
+    if not features:
+        console.print(f"[yellow]No embeddings in {path.name}[/yellow]")
+        return
+
+    store = zarr.open(str(path), mode="r")
+    tbl = Table(title=f"Embeddings — {path.name}")
+    tbl.add_column("Model",    style="bold")
+    tbl.add_column("Layer",    justify="right")
+    tbl.add_column("Shape",    justify="right")
+    tbl.add_column("Dtype",    justify="right")
+    tbl.add_column("Size",     justify="right")
+    tbl.add_column("Seq hash", style="dim")
+
+    for model in features:
+        grp   = store[f"embeddings/{model}"]
+        attrs = dict(grp.attrs)
+        arr   = grp["data"]
+        sz    = sum(f.stat().st_size for f in (path/"embeddings"/model).rglob("*")
+                   if f.is_file()) if (path/"embeddings"/model).exists() else 0
+        h = attrs.get("sequence_hash", "")
+        tbl.add_row(
+            model,
+            str(attrs.get("layer", "?")),
+            str(arr.shape),
+            attrs.get("dtype", "?"),
+            _fmt_bytes(sz),
+            (h[:12] + "...") if h else "N/A",
+        )
+
+    console.print(tbl)
+
+
+# ---------------------------------------------------------------------------
 # pairs
 # ---------------------------------------------------------------------------
 

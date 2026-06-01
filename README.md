@@ -139,10 +139,14 @@ structure.ptt/                      Zarr directory store (v0.4)
 │       ├── deletion_matrix [N_seq, N_res]   float32  insertions before each column
 │       ├── profile        [N_res, 23]       float32  per-position residue frequencies
 │       └── deletion_mean  [N_res]           float32
-└── pairs/
-    └── <name>/                              one sub-group per feature (distance_matrix, contacts, …)
-        ├── .zattrs                          channels, symmetric, dtype, description
-        └── data           [N_res, N_res, C] any dtype, chunked 128x128xC
+├── pairs/
+│   └── <name>/                              one sub-group per feature (distance_matrix, contacts, …)
+│       ├── .zattrs                          channels, symmetric, dtype, description
+│       └── data           [N_res, N_res, C] any dtype, chunked 128x128xC
+└── embeddings/
+    └── <model>/                             one sub-group per PLM (esm2_t33_650M_UR50D, …)
+        ├── .zattrs                          model, layer, dim, dtype, sequence SHA-256
+        └── data           [N_res, D]        float32 or float16, chunked 256xD
 ```
 
 ---
@@ -161,7 +165,7 @@ pytest tests/ -v
 - [x] Bond graph storage (`edge_index`) — SINGLE / DOUBLE / AROMATIC / PEPTIDE / DISULFIDE  
 - [x] MSA feature caching — A3M parser, provenance tracking, multi-source per file  
 - [x] Pair representation block `[N, N, C]` — distance matrix, contact map, generic named tensors  
-- [ ] Pre-embedded ESM2 / ESM3 features  
+- [x] Pre-embedded ESM2 / ESM3 features — float16 storage, provenance hash, lazy mmap access  
 - [ ] Model adapters: Boltz, OpenFold, RoseTTAFold  
 - [ ] Multi-structure dataset container (one store, N structures)  
 - [ ] Cloud streaming (S3 / GCS via `fsspec`)  

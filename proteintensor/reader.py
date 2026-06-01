@@ -6,6 +6,7 @@ from pathlib import Path
 from .schema import ProteinTensorData, BackboneData, BondData
 from .msa import MsaData
 from .pairs import PairFeature
+from .embeddings import EmbeddingData
 
 
 def read(path: str | Path) -> ProteinTensorData:
@@ -151,6 +152,47 @@ def mmap_pair_feature(path: str | Path, name: str) -> zarr.Array:
     store = zarr.open(str(path), mode="r")
     _require_pair(store, path, name)
     return store[f"pairs/{name}/data"]
+
+
+def list_embeddings(path: str | Path) -> list[str]:
+    """Return model names of all embeddings stored in a .ptt file."""
+    store = zarr.open(str(path), mode="r")
+    if "embeddings" not in store:
+        return []
+    return list(store["embeddings"].keys())
+
+
+def read_embedding(path: str | Path, model: str) -> EmbeddingData:
+    """Load a named PLM embedding fully into memory as float32."""
+    store = zarr.open(str(path), mode="r")
+    _require_embedding(store, path, model)
+    grp   = store[f"embeddings/{model}"]
+    attrs = dict(grp.attrs)
+    return EmbeddingData(
+        data=grp["data"][:].astype(np.float32),
+        model=model,
+        layer=int(attrs.get("layer", -1)),
+        dim=int(attrs.get("dim", grp["data"].shape[1])),
+        dtype=attrs.get("dtype", "float32"),
+        sequence_hash=attrs.get("sequence_hash", ""),
+        created_at=float(attrs.get("created_at", 0.0)),
+    )
+
+
+def mmap_embedding(path: str | Path, model: str) -> zarr.Array:
+    """Return a lazy [N_res, D] view of an embedding — no full load."""
+    store = zarr.open(str(path), mode="r")
+    _require_embedding(store, path, model)
+    return store[f"embeddings/{model}/data"]
+
+
+def _require_embedding(store: zarr.Group, path, model: str) -> None:
+    if "embeddings" not in store or model not in store["embeddings"]:
+        available = list(store["embeddings"].keys()) if "embeddings" in store else []
+        raise KeyError(
+            f"Embedding '{model}' not found in {path}. "
+            f"Available: {available or '(none)'}"
+        )
 
 
 def _require_pair(store: zarr.Group, path, name: str) -> None:

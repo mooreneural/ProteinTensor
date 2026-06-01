@@ -192,6 +192,72 @@ def add_pair_feature(
     store.attrs["pair_features"] = existing
 
 
+def add_embedding(
+    path: str | Path,
+    data: np.ndarray,
+    model: str,
+    *,
+    layer: int = -1,
+    dtype: str = "float16",
+    sequence_hash: str = "",
+    compression: str = "blosc",
+    overwrite: bool = False,
+) -> None:
+    """Append a per-residue PLM embedding to an existing .ptt file.
+
+    Parameters
+    ----------
+    path            Path to an existing .ptt Zarr store.
+    data            float array [N_res, D].
+    model           Model identifier, e.g. "esm2_t33_650M_UR50D".
+    layer           Source layer index (-1 = final layer, the default).
+    dtype           Storage dtype.  "float16" halves disk/memory vs float32.
+    sequence_hash   SHA-256 of the input sequence tokens for cache validation.
+                    Use proteintensor.embeddings.sequence_hash(tokens) to compute.
+    overwrite       Replace existing embedding for this model if present.
+    """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"{path} does not exist.")
+    if data.ndim != 2:
+        raise ValueError(f"data must be [N_res, D], got shape {data.shape}")
+
+    N_res, D = data.shape
+    store = zarr.open(str(path), mode="r+")
+    emb_root = store.require_group("embeddings")
+
+    if model in emb_root and not overwrite:
+        raise ValueError(
+            f"Embedding '{model}' already exists in {path}. "
+            "Pass overwrite=True to replace it."
+        )
+
+    compressor = _compressor(compression)
+    grp = emb_root.require_group(model)
+    grp.create_dataset(
+        "data",
+        data=data.astype(dtype),
+        dtype=dtype,
+        chunks=(min(256, N_res), D),
+        compressor=compressor,
+        overwrite=True,
+    )
+    grp.attrs.update({
+        "model":          model,
+        "layer":          layer,
+        "dim":            D,
+        "n_residues":     N_res,
+        "dtype":          dtype,
+        "sequence_hash":  sequence_hash,
+        "created_at":     time.time(),
+    })
+
+    existing = list(store.attrs.get("embeddings", []))
+    if model not in existing:
+        existing.append(model)
+    store.attrs["embeddings"] = existing
+
+
 def compute_and_store_distances(
     path: str | Path,
     *,
