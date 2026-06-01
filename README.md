@@ -118,6 +118,30 @@ ESM2 embedding).
 
 Average speedup across all six structures: **34x** for full feature assembly.
 
+### Drug target benchmark
+
+Same methodology across six high-value drug targets spanning KRAS oncology,
+HIV antivirals, PD-L1 immunotherapy, p53, cardiovascular (PCSK9), and a full
+IgG1 antibody. Numbers are consistent with the structural biology benchmark above.
+
+| Target | Res | mmCIF parse | ptt: full | ptt: backbone | ptt: bonds | ptt: MSA | ptt: dist mx |
+|---|---|---|---|---|---|---|---|
+| 6OIM - KRAS G12C + Sotorasib | 167 | 16.6 ms | 2.8 ms | 1.2 ms | 0.7 ms | 2.8 ms | 1.1 ms |
+| 3HTB - HIV-1 protease | 163 | 16.0 ms | 2.8 ms | 1.2 ms | 0.7 ms | 2.7 ms | 1.1 ms |
+| 5WT9 - PD-L1 checkpoint | 533 | 53.8 ms | 2.9 ms | 1.2 ms | 0.7 ms | 13.1 ms | 3.3 ms |
+| 1TUP - p53 tumor suppressor | 585 | 56.5 ms | 2.8 ms | 1.2 ms | 0.7 ms | 12.4 ms | 3.4 ms |
+| 2P4E - PCSK9 | 586 | 54.7 ms | 2.8 ms | 1.2 ms | 0.7 ms | 12.1 ms | 3.4 ms |
+| 1IGT - IgG1 antibody | 1,316 | 123.4 ms | 2.9 ms | 1.2 ms | 0.8 ms | 46.8 ms | 16.4 ms |
+
+| Target | Res | full | backbone | bonds | MSA | dist mx |
+|---|---|---|---|---|---|---|
+| 6OIM - KRAS G12C + Sotorasib | 167 | 6x | 14x | 24x | 6x | 15x |
+| 3HTB - HIV-1 protease | 163 | 6x | 14x | 23x | 6x | 14x |
+| 5WT9 - PD-L1 checkpoint | 533 | 19x | 44x | 77x | 4x | 16x |
+| 1TUP - p53 tumor suppressor | 585 | 20x | 47x | 80x | 5x | 17x |
+| 2P4E - PCSK9 | 586 | 19x | 46x | 77x | 5x | 16x |
+| 1IGT - IgG1 antibody | 1,316 | 42x | **100x** | **162x** | 3x | 8x |
+
 ### DataLoader batch throughput
 
 Measured using `ProteinDataset` + `ProteinDataset.collate()`, loading structures into
