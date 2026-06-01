@@ -11,6 +11,7 @@ from .writer import (
 from .msa import MsaData, from_a3m, compute_profile, MSA_GAP, MSA_MASK, MSA_VOCAB_SIZE
 from .pairs import PairFeature, compute_distance_matrix, compute_contact_map
 from .embeddings import EmbeddingData, KNOWN_DIMS, sequence_hash as embedding_sequence_hash
+from .adapters.boltz import BoltzAdapter
 from .schema import (
     ProteinTensorData,
     BackboneData,
@@ -54,6 +55,8 @@ __all__ = [
     "compute_distance_matrix", "compute_contact_map",
     # Embedding utilities
     "KNOWN_DIMS", "embedding_sequence_hash",
+    # Adapters
+    "BoltzAdapter",
     # Schema constants
     "AA_VOCAB", "AA_VOCAB_SIZE", "BACKBONE_ATOMS", "N_BACKBONE", "FORMAT_VERSION",
     # Bond constants

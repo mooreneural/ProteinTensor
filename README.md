@@ -166,6 +166,6 @@ pytest tests/ -v
 - [x] MSA feature caching — A3M parser, provenance tracking, multi-source per file  
 - [x] Pair representation block `[N, N, C]` — distance matrix, contact map, generic named tensors  
 - [x] Pre-embedded ESM2 / ESM3 features — float16 storage, provenance hash, lazy mmap access  
-- [ ] Model adapters: Boltz, OpenFold, RoseTTAFold  
+- [x] Model adapters: Boltz2 — `BoltzAdapter` converts .ptt directly to Boltz input, end-to-end prediction verified on RTX 5080  
 - [ ] Multi-structure dataset container (one store, N structures)  
 - [ ] Cloud streaming (S3 / GCS via `fsspec`)  
