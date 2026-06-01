@@ -113,19 +113,32 @@ coords = jnp.array(data.atom_positions)
 ## .ptt file layout
 
 ```
-structure.ptt/             ← Zarr directory store
-├── .zattrs                ← format, version, pdb_id, resolution, …
+structure.ptt/                      Zarr directory store (v0.4)
+├── .zattrs                         format, version, pdb_id, resolution, msa_sources, …
 ├── sequence/
-│   ├── tokens             [N_res]       int32   AA vocab indices (0–20)
-│   ├── residue_index      [N_res]       int32   PDB sequence numbers
-│   └── chain_id           [N_res]       S1      chain labels
+│   ├── tokens             [N_res]           int32    AA vocab indices (0-20)
+│   ├── residue_index      [N_res]           int32    PDB sequence numbers
+│   └── chain_id           [N_res]           S1       chain labels
 ├── atoms/
-│   ├── positions          [N_atoms, 3]  float32 Å coordinates
-│   ├── mask               [N_atoms]     bool
-│   └── b_factors          [N_atoms]     float32 B-factor / pLDDT
-└── structure/
-    ├── residue_atom_start [N_res]       int32   first atom index per residue
-    └── residue_atom_count [N_res]       int32   atom count per residue
+│   ├── positions          [N_atoms, 3]      float32  Angstrom coordinates
+│   ├── mask               [N_atoms]         bool
+│   └── b_factors          [N_atoms]         float32  B-factor / pLDDT
+├── structure/
+│   ├── residue_atom_start [N_res]           int32    first atom index per residue
+│   └── residue_atom_count [N_res]           int32    atom count per residue
+├── backbone/
+│   ├── positions          [N_res, 4, 3]     float32  N/CA/C/O coords
+│   └── mask               [N_res, 4]        bool     False = missing atom
+├── bonds/
+│   ├── edge_index         [2, N_edges]      int32    bidirectional (src, dst)
+│   └── edge_type          [N_edges]         uint8    1=SINGLE 2=DOUBLE 4=AROMATIC 5=PEPTIDE 6=SS
+└── msa/
+    └── <source>/                            one sub-group per database (uniref90, bfd, …)
+        ├── .zattrs                          tool, version, database, date, sequence SHA-256
+        ├── tokens         [N_seq, N_res]    int32    0-20=AA 21=GAP 22=MASK
+        ├── deletion_matrix [N_seq, N_res]   float32  insertions before each column
+        ├── profile        [N_res, 23]       float32  per-position residue frequencies
+        └── deletion_mean  [N_res]           float32
 ```
 
 ---
@@ -140,9 +153,9 @@ pytest tests/ -v
 
 ## Roadmap
 
-- [ ] Backbone-only dense layout `[N_res, 4, 3]` for faster backbone access  
-- [ ] Bond graph storage (`edge_index`)  
-- [ ] MSA feature caching (highest-value single addition)  
+- [x] Backbone-only dense layout `[N_res, 4, 3]` for faster backbone access  
+- [x] Bond graph storage (`edge_index`) — SINGLE / DOUBLE / AROMATIC / PEPTIDE / DISULFIDE  
+- [x] MSA feature caching — A3M parser, provenance tracking, multi-source per file  
 - [ ] Pair representation block `[N, N, C]`  
 - [ ] Pre-embedded ESM2 / ESM3 features  
 - [ ] Model adapters: Boltz, OpenFold, RoseTTAFold  
