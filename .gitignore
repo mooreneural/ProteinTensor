@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Testing / tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Biomolecular data files (local test data, not source)
+*.cif
+*.mmcif
+*.pdb
+*.ent
+*.ptt
+*.ptt.zip
+
+# OS
+.DS_Store
+Thumbs.db
