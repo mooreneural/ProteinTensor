@@ -118,6 +118,137 @@ def add_msa(
     store.attrs["msa_sources"] = existing
 
 
+def add_pair_feature(
+    path: str | Path,
+    data: np.ndarray,
+    name: str,
+    *,
+    symmetric: bool = False,
+    description: str = "",
+    dtype: str = "float32",
+    compression: str = "blosc",
+    overwrite: bool = False,
+) -> None:
+    """Append a named pairwise feature tensor to an existing .ptt file.
+
+    Parameters
+    ----------
+    path        Path to an existing .ptt Zarr store.
+    data        [N_res, N_res] or [N_res, N_res, C] array.
+                Single-channel inputs are automatically expanded to [..., 1].
+    name        Feature name, e.g. "distance_matrix", "contacts", "template_pair".
+    symmetric   Hint: True if data[i,j] == data[j,i] (stored full, used by readers).
+    description Human-readable description stored in metadata.
+    dtype       Target dtype for storage (default "float32"). Use "bool" for contacts,
+                "float16" to halve memory for large multi-channel features.
+    compression Zarr compressor ("blosc" or "none").
+    overwrite   Replace existing feature if present (default False).
+    """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"{path} does not exist.")
+
+    if data.ndim == 2:
+        data = data[:, :, np.newaxis]
+    if data.ndim != 3 or data.shape[0] != data.shape[1]:
+        raise ValueError(
+            f"data must be [N, N] or [N, N, C], got shape {data.shape}"
+        )
+
+    N, _, C = data.shape
+    store = zarr.open(str(path), mode="r+")
+    pairs_root = store.require_group("pairs")
+
+    if name in pairs_root and not overwrite:
+        raise ValueError(
+            f"Pair feature '{name}' already exists in {path}. "
+            "Pass overwrite=True to replace it."
+        )
+
+    compressor = _compressor(compression)
+    chunk = min(128, N)
+    grp = pairs_root.require_group(name)
+    grp.create_dataset(
+        "data",
+        data=data.astype(dtype),
+        dtype=dtype,
+        chunks=(chunk, chunk, C),
+        compressor=compressor,
+        overwrite=True,
+    )
+    grp.attrs.update({
+        "channels":    C,
+        "n_residues":  N,
+        "symmetric":   symmetric,
+        "description": description,
+        "dtype":       dtype,
+        "created_at":  time.time(),
+    })
+
+    # Keep a root-level index
+    existing = list(store.attrs.get("pair_features", []))
+    if name not in existing:
+        existing.append(name)
+    store.attrs["pair_features"] = existing
+
+
+def compute_and_store_distances(
+    path: str | Path,
+    *,
+    overwrite: bool = False,
+    compression: str = "blosc",
+) -> None:
+    """Compute Ca-Ca pairwise distance matrix and store as 'distance_matrix'.
+
+    Requires backbone data (written by convert). Result is float32 [N_res, N_res, 1].
+    """
+    from .pairs import compute_distance_matrix
+    path = Path(path)
+    store = zarr.open(str(path), mode="r")
+    if "backbone" not in store:
+        raise KeyError("No backbone group found. Re-convert with proteintensor>=0.2.")
+    bb = store["backbone/positions"][:]
+    dist = compute_distance_matrix(bb)
+    add_pair_feature(
+        path, dist, name="distance_matrix",
+        symmetric=True,
+        description="Ca-Ca pairwise Euclidean distances in Angstroms",
+        dtype="float32",
+        compression=compression,
+        overwrite=overwrite,
+    )
+
+
+def compute_and_store_contacts(
+    path: str | Path,
+    *,
+    threshold: float = 8.0,
+    overwrite: bool = False,
+    compression: str = "blosc",
+) -> None:
+    """Compute binary Ca contact map and store as 'contacts'.
+
+    Contacts are defined as Ca-Ca distance < threshold (default 8.0 A).
+    Requires backbone data. Result is bool [N_res, N_res, 1].
+    """
+    from .pairs import compute_contact_map, compute_distance_matrix
+    path = Path(path)
+    store = zarr.open(str(path), mode="r")
+    if "backbone" not in store:
+        raise KeyError("No backbone group found. Re-convert with proteintensor>=0.2.")
+    bb   = store["backbone/positions"][:]
+    dist = compute_distance_matrix(bb)
+    contacts = compute_contact_map(dist, threshold=threshold)
+    add_pair_feature(
+        path, contacts, name="contacts",
+        symmetric=True,
+        description=f"Ca-Ca contacts: distance < {threshold} A",
+        dtype="bool",
+        compression=compression,
+        overwrite=overwrite,
+    )
+
+
 def _arr(group: zarr.Group, name: str, data: np.ndarray, dtype: str, compressor) -> None:
     group.create_dataset(name, data=data.astype(dtype), compressor=compressor, overwrite=True)
 

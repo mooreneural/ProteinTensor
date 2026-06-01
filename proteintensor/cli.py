@@ -99,6 +99,67 @@ def info(path: Path):
 
 
 # ---------------------------------------------------------------------------
+# pairs
+# ---------------------------------------------------------------------------
+
+@main.command("pairs")
+@click.argument("path", type=click.Path(exists=True, path_type=Path))
+@click.option("--compute", is_flag=True,
+              help="Compute and store distance_matrix and contacts if not present.")
+@click.option("--threshold", default=8.0, show_default=True,
+              help="Contact distance cutoff in Angstroms (used with --compute).")
+def pairs(path: Path, compute: bool, threshold: float):
+    """Show pair features stored in a .ptt file, optionally computing standard ones."""
+    from .reader import list_pair_features
+    from .writer import compute_and_store_distances, compute_and_store_contacts
+    import zarr, datetime
+
+    if compute:
+        store = zarr.open(str(path), mode="r")
+        existing = list_pair_features(path)
+        if "distance_matrix" not in existing:
+            with console.status("Computing distance matrix ..."):
+                compute_and_store_distances(path)
+            console.print("[green]Stored:[/green] distance_matrix")
+        if "contacts" not in existing:
+            with console.status(f"Computing contacts (threshold={threshold} A) ..."):
+                compute_and_store_contacts(path, threshold=threshold)
+            console.print("[green]Stored:[/green] contacts")
+
+    features = list_pair_features(path)
+    if not features:
+        console.print(f"[yellow]No pair features in {path.name}[/yellow]")
+        console.print("Run with [bold]--compute[/bold] to generate distance_matrix and contacts.")
+        return
+
+    store = zarr.open(str(path), mode="r")
+    tbl = Table(title=f"Pair features — {path.name}")
+    tbl.add_column("Name",        style="bold")
+    tbl.add_column("Shape",       justify="right")
+    tbl.add_column("Dtype",       justify="right")
+    tbl.add_column("Symmetric",   justify="center")
+    tbl.add_column("Size",        justify="right")
+    tbl.add_column("Description")
+
+    for name in features:
+        grp   = store[f"pairs/{name}"]
+        attrs = dict(grp.attrs)
+        arr   = grp["data"]
+        sz    = sum(f.stat().st_size for f in (path / "pairs" / name).rglob("*")
+                   if f.is_file()) if (path / "pairs" / name).exists() else 0
+        tbl.add_row(
+            name,
+            str(arr.shape),
+            attrs.get("dtype", "?"),
+            "yes" if attrs.get("symmetric") else "no",
+            _fmt_bytes(sz),
+            attrs.get("description", ""),
+        )
+
+    console.print(tbl)
+
+
+# ---------------------------------------------------------------------------
 # msa-info
 # ---------------------------------------------------------------------------
 

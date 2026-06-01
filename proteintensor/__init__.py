@@ -1,9 +1,14 @@
 from .reader import (
-    read, read_backbone, read_bonds, read_msa,
-    list_msas, mmap_positions, mmap_tokens, mmap_backbone, mmap_msa_tokens,
+    read, read_backbone, read_bonds, read_msa, read_pair_feature,
+    list_msas, list_pair_features,
+    mmap_positions, mmap_tokens, mmap_backbone, mmap_msa_tokens, mmap_pair_feature,
 )
-from .writer import write, add_msa
+from .writer import (
+    write, add_msa, add_pair_feature,
+    compute_and_store_distances, compute_and_store_contacts,
+)
 from .msa import MsaData, from_a3m, compute_profile, MSA_GAP, MSA_MASK, MSA_VOCAB_SIZE
+from .pairs import PairFeature, compute_distance_matrix, compute_contact_map
 from .schema import (
     ProteinTensorData,
     BackboneData,
@@ -27,16 +32,22 @@ from .bonds import (
 __version__ = "0.1.0"
 
 __all__ = [
-    # I/O
+    # I/O — structure
     "read", "write",
-    "read_backbone", "read_bonds", "read_msa",
-    "add_msa", "list_msas",
-    "mmap_positions", "mmap_tokens", "mmap_backbone", "mmap_msa_tokens",
+    "read_backbone", "read_bonds",
+    "mmap_positions", "mmap_tokens", "mmap_backbone",
+    # I/O — MSA
+    "read_msa", "add_msa", "list_msas", "mmap_msa_tokens",
+    # I/O — pair features
+    "read_pair_feature", "add_pair_feature", "list_pair_features", "mmap_pair_feature",
+    "compute_and_store_distances", "compute_and_store_contacts",
     # Data containers
-    "ProteinTensorData", "BackboneData", "BondData", "MsaData",
+    "ProteinTensorData", "BackboneData", "BondData", "MsaData", "PairFeature",
     # MSA utilities
     "from_a3m", "compute_profile",
     "MSA_GAP", "MSA_MASK", "MSA_VOCAB_SIZE",
+    # Pair utilities
+    "compute_distance_matrix", "compute_contact_map",
     # Schema constants
     "AA_VOCAB", "AA_VOCAB_SIZE", "BACKBONE_ATOMS", "N_BACKBONE", "FORMAT_VERSION",
     # Bond constants

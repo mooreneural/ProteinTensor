@@ -132,13 +132,17 @@ structure.ptt/                      Zarr directory store (v0.4)
 ├── bonds/
 │   ├── edge_index         [2, N_edges]      int32    bidirectional (src, dst)
 │   └── edge_type          [N_edges]         uint8    1=SINGLE 2=DOUBLE 4=AROMATIC 5=PEPTIDE 6=SS
-└── msa/
-    └── <source>/                            one sub-group per database (uniref90, bfd, …)
-        ├── .zattrs                          tool, version, database, date, sequence SHA-256
-        ├── tokens         [N_seq, N_res]    int32    0-20=AA 21=GAP 22=MASK
-        ├── deletion_matrix [N_seq, N_res]   float32  insertions before each column
-        ├── profile        [N_res, 23]       float32  per-position residue frequencies
-        └── deletion_mean  [N_res]           float32
+├── msa/
+│   └── <source>/                            one sub-group per database (uniref90, bfd, …)
+│       ├── .zattrs                          tool, version, database, date, sequence SHA-256
+│       ├── tokens         [N_seq, N_res]    int32    0-20=AA 21=GAP 22=MASK
+│       ├── deletion_matrix [N_seq, N_res]   float32  insertions before each column
+│       ├── profile        [N_res, 23]       float32  per-position residue frequencies
+│       └── deletion_mean  [N_res]           float32
+└── pairs/
+    └── <name>/                              one sub-group per feature (distance_matrix, contacts, …)
+        ├── .zattrs                          channels, symmetric, dtype, description
+        └── data           [N_res, N_res, C] any dtype, chunked 128x128xC
 ```
 
 ---
@@ -156,7 +160,7 @@ pytest tests/ -v
 - [x] Backbone-only dense layout `[N_res, 4, 3]` for faster backbone access  
 - [x] Bond graph storage (`edge_index`) — SINGLE / DOUBLE / AROMATIC / PEPTIDE / DISULFIDE  
 - [x] MSA feature caching — A3M parser, provenance tracking, multi-source per file  
-- [ ] Pair representation block `[N, N, C]`  
+- [x] Pair representation block `[N, N, C]` — distance matrix, contact map, generic named tensors  
 - [ ] Pre-embedded ESM2 / ESM3 features  
 - [ ] Model adapters: Boltz, OpenFold, RoseTTAFold  
 - [ ] Multi-structure dataset container (one store, N structures)  

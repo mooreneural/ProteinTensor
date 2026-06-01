@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .schema import ProteinTensorData, BackboneData, BondData
 from .msa import MsaData
+from .pairs import PairFeature
 
 
 def read(path: str | Path) -> ProteinTensorData:
@@ -114,6 +115,51 @@ def mmap_msa_tokens(path: str | Path, source: str = "default") -> zarr.Array:
     store = zarr.open(str(path), mode="r")
     _require_msa_source(store, path, source)
     return store[f"msa/{source}/tokens"]
+
+
+def list_pair_features(path: str | Path) -> list[str]:
+    """Return the names of all pair feature tensors stored in a .ptt file."""
+    store = zarr.open(str(path), mode="r")
+    if "pairs" not in store:
+        return []
+    return list(store["pairs"].keys())
+
+
+def read_pair_feature(path: str | Path, name: str) -> PairFeature:
+    """Load a named pair feature tensor fully into memory.
+
+    Returns a PairFeature whose .data has shape [N_res, N_res, C].
+    For single-channel features (C=1) you can index data[:, :, 0] directly.
+    """
+    store = zarr.open(str(path), mode="r")
+    _require_pair(store, path, name)
+    grp   = store[f"pairs/{name}"]
+    attrs = dict(grp.attrs)
+    return PairFeature(
+        data=grp["data"][:],
+        name=name,
+        channels=int(attrs.get("channels", 1)),
+        symmetric=bool(attrs.get("symmetric", False)),
+        description=attrs.get("description", ""),
+        dtype=attrs.get("dtype", "float32"),
+        created_at=float(attrs.get("created_at", 0.0)),
+    )
+
+
+def mmap_pair_feature(path: str | Path, name: str) -> zarr.Array:
+    """Return a lazy [N_res, N_res, C] view — slice without loading the full tensor."""
+    store = zarr.open(str(path), mode="r")
+    _require_pair(store, path, name)
+    return store[f"pairs/{name}/data"]
+
+
+def _require_pair(store: zarr.Group, path, name: str) -> None:
+    if "pairs" not in store or name not in store["pairs"]:
+        available = list(store["pairs"].keys()) if "pairs" in store else []
+        raise KeyError(
+            f"Pair feature '{name}' not found in {path}. "
+            f"Available: {available or '(none)'}"
+        )
 
 
 def _require_msa_source(store: zarr.Group, path, source: str) -> None:
