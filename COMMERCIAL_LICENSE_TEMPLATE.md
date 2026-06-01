@@ -1,6 +1,6 @@
 PROTEINTENSOR COMMERCIAL LICENSE AGREEMENT
 
-This Commercial License Agreement ("Agreement") is between Clay Moore
+This Commercial License Agreement ("Agreement") is between Clay Moore (claytonwaynemoore@gmail.com)
 ("Licensor") and the organization named below ("Licensee").
 
 Organization: ___________________________________
@@ -32,7 +32,7 @@ License tier: [ ] Single team   [ ] Enterprise   [ ] OEM/redistribution
 
 4. OWNERSHIP AND IP
    The Software and all intellectual property rights remain the sole property
-   of Clay Moore. This Agreement does not transfer any ownership or equity.
+   of Clay Moore (claytonwaynemoore@gmail.com). This Agreement does not transfer any ownership or equity.
    Licensee agrees not to challenge Licensor's ownership of the Software.
 
 5. SUPPORT AND UPDATES
@@ -67,4 +67,4 @@ License tier: [ ] Single team   [ ] Enterprise   [ ] OEM/redistribution
 Licensee signature: _____________________ Date: _______________
 Printed name / title: _____________________________________
 
-Licensor (Clay Moore): _____________________ Date: _______________
+Licensor (Clay Moore (claytonwaynemoore@gmail.com)): _____________________ Date: _______________

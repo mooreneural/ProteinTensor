@@ -1,6 +1,6 @@
 PROTEINTENSOR SOFTWARE EVALUATION AGREEMENT
 
-This Evaluation Agreement ("Agreement") is entered into between Clay Moore
+This Evaluation Agreement ("Agreement") is entered into between Clay Moore (claytonwaynemoore@gmail.com)
 ("Licensor") and the individual or organization named below ("Evaluator").
 
 Evaluator name / organization: ___________________________________
@@ -23,7 +23,7 @@ Effective date: ___________________________________
 
 3. OWNERSHIP
    The Software and all intellectual property rights therein remain the sole
-   property of Clay Moore. This Agreement does not transfer any ownership rights.
+   property of Clay Moore (claytonwaynemoore@gmail.com). This Agreement does not transfer any ownership rights.
 
 4. CONFIDENTIALITY
    Evaluator agrees to keep the Software and any related technical information
@@ -45,4 +45,4 @@ Effective date: ___________________________________
 Evaluator signature: _____________________ Date: _______________
 Printed name / title: _____________________________________
 
-Licensor: Clay Moore    Date: _______________
+Licensor: Clay Moore (claytonwaynemoore@gmail.com)    Date: _______________
