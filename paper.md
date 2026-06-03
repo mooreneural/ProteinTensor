@@ -15,12 +15,14 @@ affiliations:
     index: 1
 date: 3 June 2026
 bibliography: paper.bib
-doi: 10.5281/zenodo.20533457
+archive_doi: https://doi.org/10.5281/zenodo.20533457
 ---
 
 # Summary
 
-ProteinTensor is a Python library and file format (`.ptt`) for storing
+ProteinTensor (distributed as the `proteintensor` Python package, hosted
+at github.com/mooreneural/HelixDB) is a Python library and file format
+(`.ptt`) for storing
 pre-computed tensors required by structural biology machine learning models.
 Rather than re-parsing text-based structure files at every training epoch,
 ProteinTensor converts each PDB/mmCIF structure once into a Zarr-backed,
