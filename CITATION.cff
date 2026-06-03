@@ -5,7 +5,7 @@ title: "ProteinTensor: AI-Native Biomolecular Tensor Storage for Structural Biol
 authors:
   - family-names: Moore
     given-names: Clayton W.
-version: 0.1.2
+version: 0.1.3
 date-released: 2026-06-03
 url: "https://github.com/mooreneural/HelixDB"
 repository-code: "https://github.com/mooreneural/HelixDB"
