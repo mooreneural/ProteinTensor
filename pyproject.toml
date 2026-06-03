@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "proteintensor"
-version = "0.1.0"
+version = "0.1.2"
 description = "AI-native biomolecular tensor format for structural biology ML"
 readme = "README.md"
 requires-python = ">=3.9"
