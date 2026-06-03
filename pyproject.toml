@@ -7,7 +7,7 @@ name = "proteintensor"
 version = "0.1.0"
 description = "AI-native biomolecular tensor format"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 dependencies = [
     "zarr>=2.18,<3",
     "numcodecs>=0.12",

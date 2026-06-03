@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use ProteinTensor in your research, please cite it as below."
+type: software
+title: "ProteinTensor: AI-Native Biomolecular Tensor Storage for Structural Biology ML"
+authors:
+  - family-names: Moore
+    given-names: Clayton W.
+version: 0.1.0
+date-released: 2026-06-03
+url: "https://github.com/mooreneural/HelixDB"
+repository-code: "https://github.com/mooreneural/HelixDB"
+license: MIT
+abstract: >
+  ProteinTensor is a Python library and file format (.ptt) that eliminates
+  redundant preprocessing in structural biology machine learning pipelines.
+  By converting mmCIF/PDB structures once into a Zarr-backed, LZ4-compressed,
+  memory-mappable store, ProteinTensor provides zero-parse access to atomic
+  coordinates, backbone geometry, covalent bond graphs, MSA tokens, pairwise
+  distance features, and protein language model embeddings. Benchmarked on
+  proteins from 76 to 3,525 residues, full feature assembly is 34x faster on
+  average than traditional mmCIF-based pipelines.
+keywords:
+  - structural-biology
+  - machine-learning
+  - protein-structure
+  - tensor-format
+  - zarr
+  - alphafold
+  - boltz
+preferred-citation:
+  type: article
+  title: "ProteinTensor: AI-Native Biomolecular Tensor Storage for Structural Biology ML"
+  authors:
+    - family-names: Moore
+      given-names: Clayton W.
+  journal: "Journal of Open Source Software"
+  year: 2026
+  url: "https://github.com/mooreneural/HelixDB"
