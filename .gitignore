@@ -27,6 +27,9 @@ env/
 *.ptt
 *.ptt.zip
 
+# Local dev / scratch scripts
+run_*.py
+
 # OS
 .DS_Store
 Thumbs.db
