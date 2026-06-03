@@ -5,9 +5,34 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "proteintensor"
 version = "0.1.0"
-description = "AI-native biomolecular tensor format"
+description = "AI-native biomolecular tensor format for structural biology ML"
+readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
+authors = [
+    { name = "Clayton Moore", email = "claytonwaynemoore@gmail.com" }
+]
+keywords = [
+    "protein-structure",
+    "structural-biology",
+    "machine-learning",
+    "tensor",
+    "zarr",
+    "alphafold",
+    "boltz",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "zarr>=2.18,<3",
     "numcodecs>=0.12",
@@ -22,6 +47,11 @@ torch = ["torch>=2.0"]
 jax   = ["jax>=0.4"]
 cloud = ["fsspec>=2023.1", "s3fs>=2023.1", "gcsfs>=2023.1"]
 dev   = ["pytest>=7", "pytest-benchmark", "pytest-cov", "fsspec>=2023.1"]
+
+[project.urls]
+Homepage = "https://github.com/mooreneural/HelixDB"
+Repository = "https://github.com/mooreneural/HelixDB"
+"Bug Tracker" = "https://github.com/mooreneural/HelixDB/issues"
 
 [project.scripts]
 proteintensor = "proteintensor.cli:main"
