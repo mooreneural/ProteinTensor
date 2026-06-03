@@ -1,17 +1,35 @@
-Copyright (c) 2025 Clay Moore. All rights reserved.
+ProteinTensor Non-Commercial License
+Copyright (c) 2026 Clayton Moore. All rights reserved.
 
-PROPRIETARY SOFTWARE - NOT FOR UNAUTHORIZED USE
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to use,
+copy, modify, and distribute the Software solely for non-commercial purposes,
+subject to the following conditions:
 
-This software and associated documentation files ("ProteinTensor") are the
-proprietary and confidential property of Clay Moore.
+1. NON-COMMERCIAL USE ONLY. "Non-commercial" means academic research,
+   education, personal projects, and non-profit work where the Software is
+   not used to generate revenue, provide a commercial service, or support a
+   for-profit product or pipeline. Use by a for-profit entity - including
+   internal research use at a company - requires a separate written commercial
+   license from the copyright holder.
 
-No license to use, copy, modify, distribute, sublicense, or create derivative
-works is granted except under a separate written agreement signed by Clay Moore.
+2. ATTRIBUTION. All copies or substantial portions of the Software must
+   include this license notice and the following attribution:
+   "ProteinTensor - AI-native storage format for structural biology ML
+   (https://github.com/mooreneural/HelixDB)"
 
-Evaluation use is permitted only under a signed Evaluation Agreement.
-Commercial use requires a signed Commercial License Agreement.
+3. SHARE-ALIKE. Any modified versions of the Software distributed for
+   non-commercial purposes must be released under this same license.
 
-Unauthorized use, reproduction, or distribution of this software, in whole or
-in part, may result in civil and criminal penalties.
+4. NO SUBLICENSING. You may not sublicense the Software or grant third parties
+   rights beyond those granted here.
 
-For licensing: claytonwaynemoore@gmail.com
+5. COMMERCIAL LICENSING. To obtain a commercial license, contact:
+   claytonwaynemoore@gmail.com
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
