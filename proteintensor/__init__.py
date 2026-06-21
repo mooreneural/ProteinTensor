@@ -35,7 +35,7 @@ from .dataset import ProteinDataset, create_dataset, add_to_dataset
 from .remote import consolidate
 from .converters import from_mmcif, from_sequence, from_fasta, parse_fasta
 
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 
 __all__ = [
     # Converters - input
