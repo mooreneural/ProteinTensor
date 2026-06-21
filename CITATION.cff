@@ -9,17 +9,19 @@ version: 0.2.0
 date-released: 2026-06-21
 url: "https://github.com/mooreneural/HelixDB"
 repository-code: "https://github.com/mooreneural/HelixDB"
-doi: 10.5281/zenodo.20533457
+doi: 10.5281/zenodo.20788564
 license: MIT
 abstract: >
   ProteinTensor is a Python library and file format (.ptt) that eliminates
   redundant preprocessing in structural biology machine learning pipelines.
-  By converting mmCIF/PDB structures once into a Zarr-backed, LZ4-compressed,
-  memory-mappable store, ProteinTensor provides zero-parse access to atomic
-  coordinates, backbone geometry, covalent bond graphs, MSA tokens, pairwise
-  distance features, and protein language model embeddings. Benchmarked on
-  proteins from 76 to 3,525 residues, full feature assembly is 34x faster on
-  average than traditional mmCIF-based pipelines.
+  It converts mmCIF/PDB structures - or raw protein sequences - once into a
+  Zarr-backed, LZ4-compressed, memory-mappable store, providing zero-parse
+  access to atomic coordinates, backbone geometry, covalent bond graphs, MSA
+  tokens, pairwise distance features, and protein language model embeddings.
+  Sequence-only entries serve as direct input to AlphaFold- and Boltz-style
+  predictors. Round-trip conversion is lossless, and structure loading is
+  benchmarked at 2-95x faster than mmCIF parsing across proteins from 74 to
+  3,525 residues.
 keywords:
   - structural-biology
   - machine-learning
