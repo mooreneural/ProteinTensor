@@ -33,10 +33,13 @@ from .bonds import (
 )
 from .dataset import ProteinDataset, create_dataset, add_to_dataset
 from .remote import consolidate
+from .converters import from_mmcif, from_sequence, from_fasta, parse_fasta
 
-__version__ = "0.1.0"
+__version__ = "0.1.3"
 
 __all__ = [
+    # Converters - input
+    "from_mmcif", "from_sequence", "from_fasta", "parse_fasta",
     # I/O - structure
     "read", "write",
     "read_backbone", "read_bonds",

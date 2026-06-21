@@ -24,6 +24,8 @@ def read(
     store = open_store(path, storage_options=storage_options)
     attrs = dict(store.attrs)
 
+    has_atoms      = "atoms" in store
+    has_struct     = "structure" in store
     bb_positions   = store["backbone/positions"][:] if "backbone" in store else None
     bb_mask        = store["backbone/mask"][:]      if "backbone" in store else None
     bond_edge_idx  = store["bonds/edge_index"][:]   if "bonds"    in store else None
@@ -33,11 +35,11 @@ def read(
         sequence_tokens=store["sequence/tokens"][:],
         residue_index=store["sequence/residue_index"][:],
         chain_id=store["sequence/chain_id"][:],
-        atom_positions=store["atoms/positions"][:],
-        atom_mask=store["atoms/mask"][:],
-        b_factors=store["atoms/b_factors"][:],
-        residue_atom_start=store["structure/residue_atom_start"][:],
-        residue_atom_count=store["structure/residue_atom_count"][:],
+        atom_positions=store["atoms/positions"][:]  if has_atoms  else None,
+        atom_mask=store["atoms/mask"][:]            if has_atoms  else None,
+        b_factors=store["atoms/b_factors"][:]       if has_atoms  else None,
+        residue_atom_start=store["structure/residue_atom_start"][:] if has_struct else None,
+        residue_atom_count=store["structure/residue_atom_count"][:] if has_struct else None,
         backbone_positions=bb_positions,
         backbone_mask=bb_mask,
         bond_edge_index=bond_edge_idx,

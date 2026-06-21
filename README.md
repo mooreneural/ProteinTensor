@@ -200,6 +200,30 @@ proteintensor convert 1abc.cif 1abc.ptt
 proteintensor info 1abc.ptt
 ```
 
+### Convert a sequence (no structure required)
+
+For sequence-driven predictors like AlphaFold and Boltz, the primary input is a
+sequence, not a structure. ProteinTensor can build a sequence-only `.ptt` (no
+coordinates) directly from a raw string or a FASTA file:
+
+```bash
+proteintensor convert-seq MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDG ubq.ptt
+proteintensor convert-seq complex.fasta complex.ptt   # multi-record FASTA -> multi-chain
+```
+
+```python
+import proteintensor as pt
+
+data = pt.from_sequence("MQIFVKTLTGK...", pdb_id="UBQ", chain_id="A")
+data.has_structure        # False - sequence-only entry
+data.sequence_tokens      # (N_res,)  int32
+
+pt.write(data, "ubq.ptt")
+
+# FASTA: a single record -> one chain; multiple records -> multi-chain complex
+data = pt.from_fasta("complex.fasta")
+```
+
 ### Benchmark against mmCIF
 
 ```bash

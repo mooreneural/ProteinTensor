@@ -1,0 +1,256 @@
+#!/usr/bin/env python
+"""ProteinTensor benchmark harness.
+
+Measures real conversion / read performance and round-trip fidelity on whatever
+structure files are available, plus the sequence-only conversion path. Results
+are written to ``benchmarks/results/<timestamp>.json`` and the human-readable
+``benchmarks/RESULTS.md`` is regenerated from every recorded run so numbers
+accumulate and can be compared over time.
+
+Usage
+-----
+    python benchmarks/run.py [structure.cif ...] [--rounds N]
+
+With no file arguments it benchmarks every ``*.cif`` found in the repo root.
+No GPU and no network are required; this measures the CPU format path only.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import platform
+import statistics
+import sys
+import tempfile
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+import numpy as np
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+RESULTS_DIR = Path(__file__).resolve().parent / "results"
+
+
+def _median_ms(fn, rounds: int) -> float:
+    samples = []
+    for _ in range(rounds):
+        t = time.perf_counter()
+        fn()
+        samples.append((time.perf_counter() - t) * 1e3)
+    return round(statistics.median(samples), 4)
+
+
+def _dir_bytes(path: Path) -> int:
+    return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+
+
+def benchmark_structure(cif: Path, rounds: int, pt, from_mmcif) -> dict | None:
+    try:
+        data = from_mmcif(cif)
+    except Exception as exc:  # noqa: BLE001 - report and skip, never fabricate
+        print(f"  ! {cif.name}: parse failed ({exc}); skipping")
+        return None
+
+    tmp = Path(tempfile.mkdtemp())
+    ptt = tmp / f"{cif.stem}.ptt"
+    pt.write(data, str(ptt))
+
+    # Round-trip fidelity: the format's "accuracy" guarantee.
+    rt = pt.read(str(ptt))
+    fidelity = {
+        "atom_positions": bool(np.array_equal(rt.atom_positions, data.atom_positions)),
+        "sequence_tokens": bool(np.array_equal(rt.sequence_tokens, data.sequence_tokens)),
+        "backbone_positions": bool(np.array_equal(rt.backbone_positions, data.backbone_positions)),
+        "bond_edge_index": bool(np.array_equal(rt.bond_edge_index, data.bond_edge_index)),
+    }
+
+    timings = {
+        "mmcif_parse": _median_ms(lambda: from_mmcif(cif), rounds),
+        "ptt_read_full": _median_ms(lambda: pt.read(str(ptt)), rounds),
+        "ptt_read_backbone": _median_ms(lambda: pt.read_backbone(str(ptt)), rounds),
+        "ptt_read_bonds": _median_ms(lambda: pt.read_bonds(str(ptt)), rounds),
+    }
+    speedups = {
+        "full": round(timings["mmcif_parse"] / timings["ptt_read_full"], 2),
+        "backbone": round(timings["mmcif_parse"] / timings["ptt_read_backbone"], 2),
+        "bonds": round(timings["mmcif_parse"] / timings["ptt_read_bonds"], 2),
+    }
+
+    result = {
+        "id": cif.stem,
+        "n_res": int(data.sequence_tokens.shape[0]),
+        "n_atoms": int(data.atom_positions.shape[0]),
+        "cif_kb": round(cif.stat().st_size / 1024, 1),
+        "ptt_kb": round(_dir_bytes(ptt) / 1024, 1),
+        "timings_ms": timings,
+        "speedup_vs_mmcif": speedups,
+        "roundtrip_lossless": fidelity,
+    }
+
+    import shutil
+    shutil.rmtree(tmp, ignore_errors=True)
+    return result
+
+
+def benchmark_sequence(rounds: int, pt) -> dict:
+    # Representative sequence lengths (ubiquitin-scale up to a large multidomain chain).
+    rng = np.random.default_rng(0)
+    alphabet = "ARNDCQEGHILKMFPSTWYV"
+    cases = []
+    for n in (76, 300, 1000, 3000):
+        seq = "".join(rng.choice(list(alphabet), size=n))
+        tmp = Path(tempfile.mkdtemp())
+        ptt = tmp / "seq.ptt"
+        build = _median_ms(lambda: pt.from_sequence(seq), rounds)
+        data = pt.from_sequence(seq)
+        pt.write(data, str(ptt))
+        read = _median_ms(lambda: pt.read(str(ptt)), rounds)
+        cases.append({
+            "n_res": n,
+            "from_sequence_ms": build,
+            "ptt_read_ms": read,
+            "ptt_kb": round(_dir_bytes(ptt) / 1024, 2),
+        })
+        import shutil
+        shutil.rmtree(tmp, ignore_errors=True)
+    return {"cases": cases}
+
+
+def collect_env(pt) -> dict:
+    import zarr
+    import gemmi
+    return {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "python": sys.version.split()[0],
+        "platform": platform.platform(),
+        "processor": platform.processor() or "unknown",
+        "numpy": np.__version__,
+        "zarr": zarr.__version__,
+        "gemmi": gemmi.__version__,
+        "proteintensor": getattr(pt, "__version__", "unknown"),
+        "note": "CPU format path only - no GPU, no AF3/Boltz inference measured here.",
+    }
+
+
+def regenerate_results_md() -> None:
+    runs = sorted(RESULTS_DIR.glob("*.json"))
+    lines = [
+        "# ProteinTensor benchmark results",
+        "",
+        "Auto-generated by `python benchmarks/run.py`. Each run records a JSON file",
+        "in `benchmarks/results/`; this file is regenerated from all of them.",
+        "",
+        "**Scope:** CPU format path only (parse vs zero-parse read, round-trip",
+        "fidelity, disk size). GPU inference with AlphaFold/Boltz is **not** measured",
+        "here - those numbers must be collected on the target accelerator.",
+        "",
+    ]
+    if not runs:
+        lines.append("_No runs recorded yet._")
+        (Path(__file__).resolve().parent / "RESULTS.md").write_text("\n".join(lines) + "\n")
+        return
+
+    latest = json.loads(runs[-1].read_text())
+    env = latest["env"]
+    lines += [
+        f"## Latest run - {env['timestamp_utc']}",
+        "",
+        f"- **Platform:** {env['platform']}",
+        f"- **Python:** {env['python']} | numpy {env['numpy']} | "
+        f"zarr {env['zarr']} | gemmi {env['gemmi']} | proteintensor {env['proteintensor']}",
+        "",
+    ]
+
+    structs = latest.get("structures", [])
+    if structs:
+        lines += [
+            "### Structure load (median ms, lower is better)",
+            "",
+            "| ID | Res | Atoms | mmCIF parse | ptt full | ptt backbone | ptt bonds | "
+            "full speedup | lossless |",
+            "|---|---|---|---|---|---|---|---|---|",
+        ]
+        for s in structs:
+            t, sp = s["timings_ms"], s["speedup_vs_mmcif"]
+            lossless = "yes" if all(s["roundtrip_lossless"].values()) else "NO"
+            lines.append(
+                f"| {s['id']} | {s['n_res']} | {s['n_atoms']} | {t['mmcif_parse']} | "
+                f"{t['ptt_read_full']} | {t['ptt_read_backbone']} | {t['ptt_read_bonds']} | "
+                f"{sp['full']}x | {lossless} |"
+            )
+        lines.append("")
+        lines += [
+            "### Disk size",
+            "",
+            "| ID | source mmCIF (KB) | .ptt (KB) | ratio |",
+            "|---|---|---|---|",
+        ]
+        for s in structs:
+            ratio = round(s["ptt_kb"] / s["cif_kb"], 2) if s["cif_kb"] else 0
+            lines.append(f"| {s['id']} | {s['cif_kb']} | {s['ptt_kb']} | {ratio}x |")
+        lines.append("")
+
+    seq = latest.get("sequence", {}).get("cases", [])
+    if seq:
+        lines += [
+            "### Sequence -> .ptt (median ms)",
+            "",
+            "| Residues | from_sequence | ptt read | .ptt KB |",
+            "|---|---|---|---|",
+        ]
+        for c in seq:
+            lines.append(
+                f"| {c['n_res']} | {c['from_sequence_ms']} | {c['ptt_read_ms']} | {c['ptt_kb']} |"
+            )
+        lines.append("")
+
+    if len(runs) > 1:
+        lines += ["### Run history", ""]
+        for r in runs:
+            env_i = json.loads(r.read_text())["env"]
+            lines.append(f"- `{r.name}` - {env_i['timestamp_utc']} ({env_i['platform']})")
+        lines.append("")
+
+    (Path(__file__).resolve().parent / "RESULTS.md").write_text("\n".join(lines) + "\n")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="ProteinTensor benchmark harness")
+    parser.add_argument("structures", nargs="*", type=Path,
+                        help="mmCIF/PDB files (default: all *.cif in repo root)")
+    parser.add_argument("--rounds", type=int, default=15, help="timing rounds per measurement")
+    args = parser.parse_args()
+
+    import proteintensor as pt
+    from proteintensor.converters.mmcif import from_mmcif
+
+    cifs = args.structures or sorted(REPO_ROOT.glob("*.cif"))
+    print(f"Benchmarking {len(cifs)} structure(s), {args.rounds} rounds each ...")
+
+    structures = []
+    for cif in cifs:
+        if not cif.exists():
+            print(f"  ! {cif} not found; skipping")
+            continue
+        print(f"  - {cif.name}")
+        r = benchmark_structure(cif, args.rounds, pt, from_mmcif)
+        if r:
+            structures.append(r)
+
+    print("Benchmarking sequence -> .ptt path ...")
+    sequence = benchmark_sequence(args.rounds, pt)
+
+    record = {"env": collect_env(pt), "structures": structures, "sequence": sequence}
+
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = record["env"]["timestamp_utc"].replace(":", "").replace("-", "").replace("+0000", "Z")
+    out = RESULTS_DIR / f"{stamp}.json"
+    out.write_text(json.dumps(record, indent=2))
+    regenerate_results_md()
+    print(f"\nWrote {out.relative_to(REPO_ROOT)}")
+    print(f"Regenerated {(Path(__file__).resolve().parent / 'RESULTS.md').relative_to(REPO_ROOT)}")
+
+
+if __name__ == "__main__":
+    main()

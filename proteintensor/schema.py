@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
 
-FORMAT_VERSION = "0.6"
+FORMAT_VERSION = "0.7"
 
 AA_VOCAB: dict[str, int] = {
     "ALA": 0, "ARG": 1, "ASN": 2, "ASP": 3, "CYS": 4,
@@ -14,8 +14,26 @@ AA_VOCAB: dict[str, int] = {
 AA_UNK = 20
 AA_VOCAB_SIZE = 21
 
-# Single-letter equivalents for display
-AA_1LETTER = "ARNDCQEGHILKMFPSTWYXU"
+# Single-letter codes indexed by token: position i is the 1-letter code for token i.
+# Tokens 0-19 are the standard amino acids in AA_VOCAB order; token 20 (UNK) -> "X".
+AA_1LETTER = "ARNDCQEGHILKMFPSTWYVX"
+
+# Inverse map for sequence input. Any character absent here resolves to AA_UNK,
+# which also covers ambiguity codes (B, Z, J, O) and gaps (-, .).
+ONE_LETTER_TO_TOKEN: dict[str, int] = {c: i for i, c in enumerate(AA_1LETTER)}
+
+
+def sequence_to_tokens(sequence: str) -> np.ndarray:
+    """Map a 1-letter amino-acid string to an int32 token array (unknown -> UNK)."""
+    cleaned = "".join(sequence.split()).upper()
+    return np.array(
+        [ONE_LETTER_TO_TOKEN.get(c, AA_UNK) for c in cleaned], dtype=np.int32
+    )
+
+
+def tokens_to_sequence(tokens: np.ndarray) -> str:
+    """Map an int32 token array back to a 1-letter amino-acid string."""
+    return "".join(AA_1LETTER[int(t)] if 0 <= int(t) < AA_VOCAB_SIZE else "X" for t in tokens)
 
 # Canonical backbone atom order (AlphaFold / OpenFold convention)
 BACKBONE_ATOMS = ["N", "CA", "C", "O"]
@@ -47,14 +65,15 @@ class ProteinTensorData:
     residue_index: np.ndarray        # int32   PDB sequence numbers
     chain_id: np.ndarray             # S1      single-char chain labels
 
-    # Atom-level - shapes [N_atoms] or [N_atoms, 3]
-    atom_positions: np.ndarray       # float32 [N_atoms, 3]  Angstroms
-    atom_mask: np.ndarray            # bool    [N_atoms]
-    b_factors: np.ndarray            # float32 [N_atoms]     B-factor / pLDDT
+    # Atom-level - shapes [N_atoms] or [N_atoms, 3].
+    # None for sequence-only entries (from_sequence / from_fasta) that carry no structure.
+    atom_positions: np.ndarray | None = None   # float32 [N_atoms, 3]  Angstroms
+    atom_mask: np.ndarray | None = None        # bool    [N_atoms]
+    b_factors: np.ndarray | None = None        # float32 [N_atoms]     B-factor / pLDDT
 
-    # Residue->atom mapping - shape [N_res]
-    residue_atom_start: np.ndarray   # int32   first atom index for each residue
-    residue_atom_count: np.ndarray   # int32   number of atoms per residue
+    # Residue->atom mapping - shape [N_res] (None for sequence-only entries)
+    residue_atom_start: np.ndarray | None = None   # int32   first atom index for each residue
+    residue_atom_count: np.ndarray | None = None   # int32   number of atoms per residue
 
     # Backbone dense layout - shapes [N_res, 4, 3] and [N_res, 4]
     # Atom order: N=0, CA=1, C=2, O=3  (missing atoms have mask=False, coords=0)
@@ -70,3 +89,12 @@ class ProteinTensorData:
     resolution: float = float("nan")
     method: str = ""
     deposition_date: str = ""
+
+    @property
+    def has_structure(self) -> bool:
+        """True if 3D coordinates are present; False for sequence-only entries."""
+        return self.atom_positions is not None
+
+    @property
+    def num_residues(self) -> int:
+        return int(self.sequence_tokens.shape[0])

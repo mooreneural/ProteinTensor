@@ -74,6 +74,62 @@ def convert(input_path: Path, output_path: Path, compression: str, pdb_id: str):
 
 
 # ---------------------------------------------------------------------------
+# convert-seq
+# ---------------------------------------------------------------------------
+
+@main.command("convert-seq")
+@click.argument("sequence_or_fasta", type=str)
+@click.argument("output_path", type=click.Path(path_type=Path))
+@click.option("--compression", default="blosc", show_default=True,
+              type=click.Choice(["blosc", "none"]),
+              help="Compression codec for the Zarr store.")
+@click.option("--pdb-id", default="", help="Identifier stored in metadata (e.g. UniProt accession).")
+@click.option("--chain", default="A", show_default=True,
+              help="Chain label applied to a raw sequence input.")
+def convert_seq(sequence_or_fasta: str, output_path: Path, compression: str,
+                pdb_id: str, chain: str):
+    """Convert a protein sequence to ProteinTensor (.ptt) format.
+
+    SEQUENCE_OR_FASTA may be a path to a FASTA file or a literal 1-letter
+    amino-acid string. The result is a sequence-only .ptt (no coordinates) -
+    the primary input form for AlphaFold- and Boltz-style predictors.
+    """
+    from .converters.sequence import from_sequence, from_fasta
+    from .writer import write
+
+    src = Path(sequence_or_fasta)
+    is_file = src.exists() and src.is_file()
+
+    t0 = time.perf_counter()
+    if is_file:
+        data = from_fasta(src, pdb_id=pdb_id)
+        source_desc = src.name
+    else:
+        data = from_sequence(sequence_or_fasta, pdb_id=pdb_id, chain_id=chain)
+        source_desc = f"<literal sequence: {data.num_residues} aa>"
+    build_ms = (time.perf_counter() - t0) * 1000
+
+    t0 = time.perf_counter()
+    write(data, output_path, compression=compression)
+    write_ms = (time.perf_counter() - t0) * 1000
+
+    dst_bytes = sum(f.stat().st_size for f in Path(output_path).rglob("*") if f.is_file())
+
+    tbl = Table(show_header=False, box=None, padding=(0, 2))
+    tbl.add_row("PDB ID",    data.pdb_id or "(unknown)")
+    tbl.add_row("Chains",    _chain_summary(data.chain_id))
+    tbl.add_row("Residues",  f"{data.num_residues:,}")
+    tbl.add_row("Structure", "no (sequence-only)")
+    tbl.add_row("")
+    tbl.add_row("Source",     source_desc)
+    tbl.add_row("Build time", f"{build_ms:.1f} ms")
+    tbl.add_row("Write time", f"{write_ms:.1f} ms")
+    tbl.add_row("Output",     _fmt_bytes(dst_bytes))
+
+    console.print(Panel(tbl, title=f"[green]Converted -> {output_path}[/green]", expand=False))
+
+
+# ---------------------------------------------------------------------------
 # info
 # ---------------------------------------------------------------------------
 

@@ -22,7 +22,8 @@ def write(data: ProteinTensorData, path: str | Path, compression: str = "blosc")
         "deposition_date": data.deposition_date,
         "created_at": time.time(),
         "num_residues": int(data.sequence_tokens.shape[0]),
-        "num_atoms": int(data.atom_positions.shape[0]),
+        "num_atoms": int(data.atom_positions.shape[0]) if data.has_structure else 0,
+        "has_structure": data.has_structure,
     })
 
     seq = store.require_group("sequence")
@@ -30,14 +31,16 @@ def write(data: ProteinTensorData, path: str | Path, compression: str = "blosc")
     _arr(seq, "residue_index", data.residue_index,      "int32",   compressor)
     _arr(seq, "chain_id",      data.chain_id,           "S1",      compressor)
 
-    atoms = store.require_group("atoms")
-    _arr(atoms, "positions",   data.atom_positions,     "float32", compressor)
-    _arr(atoms, "mask",        data.atom_mask,          "bool",    compressor)
-    _arr(atoms, "b_factors",   data.b_factors,          "float32", compressor)
+    # Atom-level and residue->atom mapping are omitted for sequence-only entries.
+    if data.has_structure:
+        atoms = store.require_group("atoms")
+        _arr(atoms, "positions",   data.atom_positions,     "float32", compressor)
+        _arr(atoms, "mask",        data.atom_mask,          "bool",    compressor)
+        _arr(atoms, "b_factors",   data.b_factors,          "float32", compressor)
 
-    struct = store.require_group("structure")
-    _arr(struct, "residue_atom_start", data.residue_atom_start, "int32", compressor)
-    _arr(struct, "residue_atom_count", data.residue_atom_count, "int32", compressor)
+        struct = store.require_group("structure")
+        _arr(struct, "residue_atom_start", data.residue_atom_start, "int32", compressor)
+        _arr(struct, "residue_atom_count", data.residue_atom_count, "int32", compressor)
 
     if data.backbone_positions is not None and data.backbone_mask is not None:
         bb = store.require_group("backbone")
