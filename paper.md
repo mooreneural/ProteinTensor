@@ -48,7 +48,7 @@ ColabFold [@mirdita2022colabfold], and running ESM2 [@lin2023esm2]
 inference. Every step produces the same output for a given structure, yet
 nearly every training framework repeats all of them from scratch at each
 epoch. For a 100,000-structure training run this overhead reaches
-approximately 4.5 days of CPU time per epoch for full feature assembly.
+approximately 15 hours of CPU time per epoch for full feature assembly.
 
 No existing format fills this niche completely. The mmCIF and PDB formats
 [@wwpdb2019] are text-based and require expensive parsing via libraries such
@@ -95,11 +95,12 @@ median of 30 rounds. Per-structure load times for the full tensor set range
 from 2.8 to 3.3 ms, compared to 7.2 to 352.4 ms for mmCIF parsing via
 gemmi [@wojdyr2022gemmi], yielding speedups of 3x to 108x. Full feature
 assembly - sequence tokens, MSA, Ca-Ca distance matrix, and ESM2 embedding
-combined - averages 34x faster than the traditional pipeline across all six
-structures. At dataset scale, loading 100,000 structures per epoch falls
+combined - averages approximately 4x faster than the traditional pipeline
+across all six structures, measured against a vectorized A3M parser so the
+baseline is fair. At dataset scale, loading 100,000 structures per epoch falls
 from approximately 3.7 hours (mmCIF parse only) to approximately 5 minutes,
-and full feature assembly drops from approximately 4.5 days to
-approximately 3.2 hours. The largest single gain is MSA caching: generating
+and full feature assembly drops from approximately 15 hours to
+approximately 3.6 hours. The largest single gain is MSA caching: generating
 MSAs with JackHMMER [@eddy2011hmmer] costs approximately 4,000 CPU-hours
 for 100,000 proteins; ProteinTensor reduces all subsequent loads to
 approximately 2.2 hours by storing pre-tokenized MSA tensors and per-column

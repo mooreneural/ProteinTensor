@@ -1,0 +1,62 @@
+{
+  "env": {
+    "timestamp_utc": "2026-07-02T21:08:43+00:00",
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26100-SP0",
+    "numpy": "1.26.4",
+    "zarr": "2.18.7",
+    "proteintensor": "0.2.0",
+    "note": "Structure real; MSA/embedding shapes realistic, content synthetic. No MSA generation or ESM2 inference measured."
+  },
+  "cases": [
+    {
+      "id": "1UBQ",
+      "n_res": 76,
+      "msa_depth": 512,
+      "traditional_ms": 14.062,
+      "proteintensor_ms": 7.142,
+      "speedup": 2.0
+    },
+    {
+      "id": "6LU7",
+      "n_res": 312,
+      "msa_depth": 1024,
+      "traditional_ms": 48.709,
+      "proteintensor_ms": 13.57,
+      "speedup": 3.6
+    },
+    {
+      "id": "4HHB",
+      "n_res": 574,
+      "msa_depth": 2048,
+      "traditional_ms": 117.961,
+      "proteintensor_ms": 22.736,
+      "speedup": 5.2
+    },
+    {
+      "id": "6M0J",
+      "n_res": 791,
+      "msa_depth": 2048,
+      "traditional_ms": 196.423,
+      "proteintensor_ms": 38.305,
+      "speedup": 5.1
+    },
+    {
+      "id": "6VXX",
+      "n_res": 2916,
+      "msa_depth": 8192,
+      "traditional_ms": 1395.119,
+      "proteintensor_ms": 308.731,
+      "speedup": 4.5
+    },
+    {
+      "id": "6OHW",
+      "n_res": 3525,
+      "msa_depth": 8192,
+      "traditional_ms": 1462.067,
+      "proteintensor_ms": 381.472,
+      "speedup": 3.8
+    }
+  ],
+  "average_speedup": 4.0
+}

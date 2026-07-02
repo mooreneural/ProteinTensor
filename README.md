@@ -103,20 +103,30 @@ large proteins - the real MSA comparison is vs JackHMMER generation (see below).
 
 ### Feature assembly: time to prepare all tensors for model.forward()
 
-Traditional = mmCIF parse + read MSA from A3M file. ProteinTensor = single .ptt read
-with all features pre-cached (sequence, backbone, bonds, MSA, distance matrix,
-ESM2 embedding).
+Traditional = mmCIF parse + A3M MSA parse + distance-matrix compute. ProteinTensor
+= read the structure, MSA, distance matrix, and ESM2 embedding from a single
+pre-cached `.ptt`. Reproduce with `python benchmarks/assembly_benchmark.py`
+(MSA depth and embedding shape are realistic; numeric content is synthetic, so
+timing reflects tensor dimensions, not values).
 
-| Structure | Res | Traditional | ProteinTensor | Speedup |
-|---|---|---|---|---|
-| 1UBQ - Ubiquitin | 76 | 22.7 ms | 5.2 ms | 4x |
-| 6LU7 - SARS-CoV-2 Mpro | 312 | 157.3 ms | 9.9 ms | 16x |
-| 4HHB - Hemoglobin | 574 | 525.5 ms | 17.7 ms | 30x |
-| 6M0J - ACE2 + RBD | 791 | 722.7 ms | 23.9 ms | 30x |
-| 6VXX - Spike trimer | 2,916 | 9,838.5 ms | 282.7 ms | 35x |
-| 6OHW - Cas12a | 3,525 | 11,903.1 ms | 348.4 ms | **34x** |
+| Structure | Res | MSA depth | Traditional | ProteinTensor | Speedup |
+|---|---|---|---|---|---|
+| 1UBQ - Ubiquitin | 76 | 512 | 14.1 ms | 7.1 ms | 2.0x |
+| 6LU7 - SARS-CoV-2 Mpro | 312 | 1,024 | 48.7 ms | 13.6 ms | 3.6x |
+| 4HHB - Hemoglobin | 574 | 2,048 | 118.0 ms | 22.7 ms | 5.2x |
+| 6M0J - ACE2 + RBD | 791 | 2,048 | 196.4 ms | 38.3 ms | 5.1x |
+| 6VXX - Spike trimer | 2,916 | 8,192 | 1,395 ms | 309 ms | 4.5x |
+| 6OHW - Cas12a | 3,525 | 8,192 | 1,462 ms | 381 ms | 3.8x |
 
-Average speedup across all six structures: **34x** for full feature assembly.
+Average speedup across all six structures: **4x** for full feature assembly
+(measured on a Windows CPU box - see
+[`benchmarks/ASSEMBLY_RESULTS.md`](benchmarks/ASSEMBLY_RESULTS.md)).
+
+> **On an earlier 34x figure:** prior versions reported ~34x here. That number was
+> measured against ProteinTensor's original scalar A3M parser, which dominated the
+> traditional side (~11 s to parse an 8,192-deep MSA). Vectorizing that parser in
+> v0.2.0 cut the traditional baseline ~8x, so the *fair* feature-assembly speedup
+> is now ~4x. The `.ptt` read side was unchanged - only the baseline got faster.
 
 ### Drug target benchmark
 
@@ -164,7 +174,7 @@ above - not end-to-end measurements at 100k scale.
 |---|---|---|---|
 | Structure load (parse mmCIF each epoch) | 3.7 hours | 5 min | **45x** |
 | Backbone-only load (template search) | 3.7 hours | 2 min | **109x** |
-| Full feature assembly (seq + MSA + pairs + emb) | 4.5 days | 3.2 hours | **34x** |
+| Full feature assembly (seq + MSA + pairs + emb) | 15 hours | 3.6 hours | **4x** |
 | MSA generation (JackHMMER, 32-core CPU, once) | 4,000 hours | 2.2 hours | **1,794x** |
 
 > MSA generation assumes 2.4 min/protein on a 32-core server (PDB90 database, standard
