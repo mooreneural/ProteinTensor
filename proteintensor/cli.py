@@ -357,8 +357,139 @@ def benchmark(input_path: Path, ptt_path: Path | None, rounds: int):
 
 
 # ---------------------------------------------------------------------------
+# convert-dir
+# ---------------------------------------------------------------------------
+
+@main.command("convert-dir")
+@click.argument("input_dir",  type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.argument("output_dir", type=click.Path(file_okay=False, path_type=Path))
+@click.option("--compression", default="blosc", show_default=True,
+              type=click.Choice(["blosc", "none"]),
+              help="Compression codec for the Zarr stores.")
+@click.option("--workers", default=0, show_default=True,
+              help="Parallel worker processes (0 = auto: min(8, CPU count)).")
+@click.option("--recursive", is_flag=True, help="Search INPUT_DIR recursively.")
+@click.option("--skip-existing/--overwrite", default=True, show_default=True,
+              help="Skip inputs whose .ptt already exists, or rebuild them.")
+def convert_dir(input_dir: Path, output_dir: Path, compression: str,
+                workers: int, recursive: bool, skip_existing: bool):
+    """Batch-convert a directory of mmCIF/PDB files to .ptt format.
+
+    Discovers .cif/.mmcif/.pdb/.ent files in INPUT_DIR and writes one .ptt per
+    structure into OUTPUT_DIR, in parallel with progress reporting. Files that
+    fail to parse are skipped and listed in the summary.
+    """
+    import os
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    from rich.progress import (
+        Progress, BarColumn, TextColumn, TimeElapsedColumn, MofNCompleteColumn,
+    )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    files = _discover_structures(input_dir, recursive)
+    if not files:
+        console.print(
+            f"[yellow]No structure files found in {input_dir}[/yellow] "
+            f"(looked for {', '.join(sorted(SUPPORTED_INPUT))})"
+        )
+        return
+
+    tasks: list[tuple[str, str, str]] = []
+    skipped_existing = 0
+    for f in files:
+        out = output_dir / f"{f.stem}.ptt"
+        if skip_existing and out.exists():
+            skipped_existing += 1
+            continue
+        tasks.append((str(f), str(out), compression))
+
+    if not tasks:
+        console.print(
+            f"[green]All {len(files)} structures already converted[/green] "
+            f"({skipped_existing} skipped). Use --overwrite to rebuild."
+        )
+        return
+
+    if workers <= 0:
+        workers = min(8, os.cpu_count() or 1)
+    workers = min(workers, len(tasks))
+
+    results: list[dict] = []
+    with Progress(
+        TextColumn("[bold blue]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        bar = progress.add_task("Converting", total=len(tasks))
+        if workers == 1:
+            for t in tasks:
+                results.append(_convert_one_file(t))
+                progress.advance(bar)
+        else:
+            with ProcessPoolExecutor(max_workers=workers) as pool:
+                futures = [pool.submit(_convert_one_file, t) for t in tasks]
+                for fut in as_completed(futures):
+                    results.append(fut.result())
+                    progress.advance(bar)
+
+    ok     = [r for r in results if r["ok"]]
+    failed = [r for r in results if not r["ok"]]
+
+    tbl = Table(show_header=False, box=None, padding=(0, 2))
+    tbl.add_row("Input dir",          str(input_dir))
+    tbl.add_row("Output dir",         str(output_dir))
+    tbl.add_row("Converted",          f"{len(ok)}")
+    tbl.add_row("Failed",             f"{len(failed)}")
+    tbl.add_row("Skipped (existing)", f"{skipped_existing}")
+    tbl.add_row("Workers",            f"{workers}")
+    if ok:
+        tbl.add_row("Total residues", f"{sum(r['n_res'] for r in ok):,}")
+    console.print(Panel(tbl, title="[green]Batch conversion complete[/green]", expand=False))
+
+    if failed:
+        ftbl = Table(title="[red]Failed conversions[/red]", box=None, padding=(0, 2))
+        ftbl.add_column("File", style="bold")
+        ftbl.add_column("Error")
+        for r in failed[:20]:
+            ftbl.add_row(r["file"], r["error"])
+        console.print(ftbl)
+        if len(failed) > 20:
+            console.print(f"... and {len(failed) - 20} more failures")
+
+
+# ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
+
+def _discover_structures(input_dir: Path, recursive: bool) -> list[Path]:
+    """Return sorted structure files (by supported extension) under input_dir."""
+    it = input_dir.rglob("*") if recursive else input_dir.iterdir()
+    return sorted(
+        p for p in it if p.is_file() and p.suffix.lower() in SUPPORTED_INPUT
+    )
+
+
+def _convert_one_file(task: tuple[str, str, str]) -> dict:
+    """Convert one structure file to .ptt. Module-level so it is picklable for
+    ProcessPoolExecutor. Returns a result dict; never raises."""
+    inp, outp, compression = task
+    from .converters.mmcif import from_mmcif
+    from .writer import write
+    try:
+        t0 = time.perf_counter()
+        data = from_mmcif(Path(inp))
+        write(data, Path(outp), compression=compression)
+        return {
+            "file": Path(inp).name,
+            "ok": True,
+            "n_res": int(data.sequence_tokens.shape[0]),
+            "ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
+    except Exception as exc:  # report and continue - one bad file must not stop the batch
+        return {"file": Path(inp).name, "ok": False, "error": str(exc)}
+
 
 def _time_rounds(n: int, fn) -> np.ndarray:
     times = []

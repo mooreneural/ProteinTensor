@@ -236,6 +236,18 @@ pt.write(data, "ubq.ptt")
 data = pt.from_fasta("complex.fasta")
 ```
 
+### Batch-convert a directory
+
+Convert an entire directory of structures in parallel, with progress reporting.
+Files that fail to parse are skipped and listed in the summary; already-converted
+outputs are skipped by default.
+
+```bash
+proteintensor convert-dir ./pdb_files/ ./ptt_files/            # auto worker count
+proteintensor convert-dir ./pdb_files/ ./ptt_files/ --workers 16 --recursive
+proteintensor convert-dir ./pdb_files/ ./ptt_files/ --overwrite  # rebuild existing
+```
+
 ### Benchmark against mmCIF
 
 ```bash
@@ -484,7 +496,7 @@ A3M parsing, Boltz adapter, multi-structure dataset, and cloud streaming
 - [ ] Chai-1 adapter
 
 **Data pipeline**
-- [ ] Batch convert CLI - convert entire PDB directories in parallel with progress reporting
+- [x] Batch convert CLI - convert entire PDB directories in parallel with progress reporting
 - [ ] Sequence-identity dataset splitting - MMseqs2-based cluster splits to prevent data leakage between train / val / test
 
 **Format extensions**
