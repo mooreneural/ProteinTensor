@@ -157,6 +157,9 @@ padded batches ready for `model.forward()`. Single process, no prefetch workers.
 
 ### Scale projection: 100,000 structures, one training epoch
 
+These are **projections**, extrapolated from the measured per-structure timings
+above - not end-to-end measurements at 100k scale.
+
 | Operation | Traditional pipeline | ProteinTensor | Speedup |
 |---|---|---|---|
 | Structure load (parse mmCIF each epoch) | 3.7 hours | 5 min | **45x** |
@@ -168,6 +171,14 @@ padded batches ready for `model.forward()`. Single process, no prefetch workers.
 > AlphaFold settings). ProteinTensor generates MSAs once and loads from the `.ptt` cache
 > on every subsequent run. The 4,000-hour figure is the real cost AlphaFold2 and Boltz
 > users pay to build training datasets from scratch.
+
+> **Measured vs projected - read this.** The **1,794x** above is MSA *generation*
+> (building the alignment once with JackHMMER) and is a **literature-based
+> projection**, not something benchmarked here. What *is* measured on hardware is
+> the recurring per-epoch MSA **load** - reading a cached MSA from `.ptt` vs
+> re-parsing A3M text each epoch: **3.8x-25x**, growing with MSA depth. See
+> [`benchmarks/MSA_RESULTS.md`](benchmarks/MSA_RESULTS.md). These are different
+> quantities; do not read the 1,794x as a measured load speedup.
 
 ### Disk tradeoff
 
