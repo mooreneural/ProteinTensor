@@ -505,9 +505,9 @@ Each sub-group under `structures/` is identical to a standalone `.ptt` root, so 
 pytest tests/ -v
 ```
 
-106 tests across structure roundtrip, backbone/bonds/MSA/pairs/embeddings,
-A3M parsing, Boltz adapter, multi-structure dataset, and cloud streaming
-(memory:// fsspec - no real cloud account required).
+150 tests across structure roundtrip, backbone/bonds/MSA/pairs/embeddings/ligands,
+sequence conversion, A3M parsing, Boltz adapter, multi-structure dataset, and cloud
+streaming (memory:// fsspec - no real cloud account required).
 
 ---
 
