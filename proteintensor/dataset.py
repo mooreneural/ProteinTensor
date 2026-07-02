@@ -216,6 +216,9 @@ class ProteinDataset:
         """Collate a list of ProteinTensorData into padded batch arrays.
 
         Sequences and atom arrays are padded to the max length in the batch.
+        Sequence-only entries (has_structure == False) contribute zero atoms:
+        their atom rows stay zero/False, so structure and sequence-only entries
+        can be batched together. Use the ``has_structure`` mask to tell them apart.
 
         Returns a dict with keys:
           sequence_tokens    [B, max_res]        int32
@@ -228,13 +231,18 @@ class ProteinDataset:
           backbone_mask      [B, max_res, 4]     bool     (if all samples have it)
           padding_mask       [B, max_res]        bool,    True = real residue
           n_residues         [B]                 int32
-          n_atoms            [B]                 int32
+          n_atoms            [B]                 int32,   0 for sequence-only
+          has_structure      [B]                 bool,    False for sequence-only
         """
         from .schema import AA_UNK
 
         B         = len(samples)
         max_res   = max(s.sequence_tokens.shape[0] for s in samples)
-        max_atoms = max(s.atom_positions.shape[0]  for s in samples)
+        n_res     = np.array([s.sequence_tokens.shape[0] for s in samples], dtype=np.int32)
+        n_atoms   = np.array([s.atom_positions.shape[0] if s.has_structure else 0
+                              for s in samples], dtype=np.int32)
+        has_struct = np.array([s.has_structure for s in samples], dtype=bool)
+        max_atoms = int(n_atoms.max()) if B else 0
 
         seq_tok   = np.full((B, max_res),        AA_UNK, dtype=np.int32)
         res_idx   = np.full((B, max_res),        -1,     dtype=np.int32)
@@ -243,19 +251,18 @@ class ProteinDataset:
         atom_mask = np.zeros((B, max_atoms),             dtype=bool)
         b_fac     = np.zeros((B, max_atoms),             dtype=np.float32)
         pad_mask  = np.zeros((B, max_res),               dtype=bool)
-        n_res     = np.array([s.sequence_tokens.shape[0] for s in samples], dtype=np.int32)
-        n_atoms   = np.array([s.atom_positions.shape[0]  for s in samples], dtype=np.int32)
 
         for i, s in enumerate(samples):
             nr = n_res[i]
-            na = n_atoms[i]
             seq_tok[i,  :nr]   = s.sequence_tokens
             res_idx[i,  :nr]   = s.residue_index
             chain_id[i, :nr]   = s.chain_id
-            atom_pos[i, :na]   = s.atom_positions
-            atom_mask[i, :na]  = s.atom_mask
-            b_fac[i,    :na]   = s.b_factors
             pad_mask[i, :nr]   = True
+            if s.has_structure:
+                na = n_atoms[i]
+                atom_pos[i,  :na]  = s.atom_positions
+                atom_mask[i, :na]  = s.atom_mask
+                b_fac[i,     :na]  = s.b_factors
 
         batch: dict[str, np.ndarray] = {
             "sequence_tokens": seq_tok,
@@ -267,6 +274,7 @@ class ProteinDataset:
             "padding_mask":    pad_mask,
             "n_residues":      n_res,
             "n_atoms":         n_atoms,
+            "has_structure":   has_struct,
         }
 
         if all(s.backbone_positions is not None for s in samples):
@@ -290,6 +298,8 @@ def _read_group(grp: zarr.Group) -> ProteinTensorData:
     """Read a ProteinTensorData from a sub-group with the same layout as a .ptt root."""
     attrs = dict(grp.attrs)
 
+    has_atoms      = "atoms" in grp
+    has_struct     = "structure" in grp
     bb_positions   = grp["backbone/positions"][:] if "backbone" in grp else None
     bb_mask        = grp["backbone/mask"][:]      if "backbone" in grp else None
     bond_edge_idx  = grp["bonds/edge_index"][:]   if "bonds"    in grp else None
@@ -299,11 +309,11 @@ def _read_group(grp: zarr.Group) -> ProteinTensorData:
         sequence_tokens=grp["sequence/tokens"][:],
         residue_index=grp["sequence/residue_index"][:],
         chain_id=grp["sequence/chain_id"][:],
-        atom_positions=grp["atoms/positions"][:],
-        atom_mask=grp["atoms/mask"][:],
-        b_factors=grp["atoms/b_factors"][:],
-        residue_atom_start=grp["structure/residue_atom_start"][:],
-        residue_atom_count=grp["structure/residue_atom_count"][:],
+        atom_positions=grp["atoms/positions"][:]  if has_atoms  else None,
+        atom_mask=grp["atoms/mask"][:]            if has_atoms  else None,
+        b_factors=grp["atoms/b_factors"][:]       if has_atoms  else None,
+        residue_atom_start=grp["structure/residue_atom_start"][:] if has_struct else None,
+        residue_atom_count=grp["structure/residue_atom_count"][:] if has_struct else None,
         backbone_positions=bb_positions,
         backbone_mask=bb_mask,
         bond_edge_index=bond_edge_idx,

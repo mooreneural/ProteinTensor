@@ -360,6 +360,7 @@ data = pt.read(
 )
 
 # ------ Multi-structure dataset ------
+# Structure .ptt files and sequence-only .ptt files can be mixed in one dataset.
 pt.create_dataset("training.ptt")
 for ptt_file in Path("ptt_files").glob("*.ptt"):
     pt.add_to_dataset("training.ptt", ptt_file)
@@ -375,7 +376,12 @@ loader = DataLoader(ds, batch_size=8, collate_fn=pt.ProteinDataset.collate)
 for batch in loader:
     coords  = torch.from_numpy(batch["atom_positions"])   # (B, max_atoms, 3)
     pad     = torch.from_numpy(batch["padding_mask"])     # (B, max_res)  True=real
+    has_str = torch.from_numpy(batch["has_structure"])    # (B,)  False = sequence-only
 ```
+
+Sequence-only entries contribute zero atoms to the batch (`n_atoms == 0`,
+`has_structure == False`), so sequence-driven and structure-based samples can be
+loaded together in one `DataLoader`.
 
 ---
 

@@ -275,3 +275,62 @@ def test_open_single_ptt_as_dataset_raises():
         ptt = _make_ptt(tmp, 20, "1ABC")
         with pytest.raises(ValueError, match="not a ProteinTensor dataset"):
             ProteinDataset(ptt)
+
+
+# ---------------------------------------------------------------------------
+# sequence-only entries in a dataset
+# ---------------------------------------------------------------------------
+
+def _make_seq_ptt(tmp: str, seq: str, pdb_id: str) -> Path:
+    from proteintensor import from_sequence, write
+    p = Path(tmp) / f"{pdb_id}.ptt"
+    write(from_sequence(seq, pdb_id=pdb_id), p)
+    return p
+
+
+def test_dataset_reads_sequence_only_entry():
+    from proteintensor import create_dataset, add_to_dataset, ProteinDataset
+    with tempfile.TemporaryDirectory() as tmp:
+        ds_path = Path(tmp) / "ds.ptt"
+        create_dataset(ds_path)
+        add_to_dataset(ds_path, _make_seq_ptt(tmp, "MKTAYIAKQR", "SEQ1"))
+
+        ds = ProteinDataset(ds_path)
+        assert len(ds) == 1
+        data = ds["SEQ1"]
+        assert data.has_structure is False
+        assert data.atom_positions is None
+        assert data.residue_atom_start is None
+        assert data.sequence_tokens.shape[0] == 10
+
+
+def test_collate_all_sequence_only():
+    from proteintensor import ProteinDataset, from_sequence
+    samples = [from_sequence("MKTAYIAKQR"), from_sequence("QRLLGKPFSAED")]
+    batch = ProteinDataset.collate(samples)
+    assert batch["sequence_tokens"].shape == (2, 12)   # padded to longest
+    assert batch["atom_positions"].shape == (2, 0, 3)  # no atoms in the batch
+    assert batch["n_atoms"].tolist() == [0, 0]
+    assert batch["has_structure"].tolist() == [False, False]
+    # padding mask marks real residues per row
+    assert batch["padding_mask"][0].sum() == 10
+    assert batch["padding_mask"][1].sum() == 12
+
+
+def test_collate_mixed_structure_and_sequence_only():
+    from proteintensor import ProteinDataset, from_sequence, read
+    with tempfile.TemporaryDirectory() as tmp:
+        struct = read(_make_ptt(tmp, 15, "STRC"))     # has structure
+        seqonly = from_sequence("MKTAYIAKQRQISFV", pdb_id="SEQ2")  # 15 res, no structure
+
+        batch = ProteinDataset.collate([struct, seqonly])
+        assert batch["has_structure"].tolist() == [True, False]
+        assert batch["n_atoms"].tolist() == [15 * 4, 0]
+        # structure entry keeps its atoms; sequence-only entry is all-padding
+        assert batch["atom_mask"][0, :60].all()
+        assert not batch["atom_mask"][1].any()
+        # both contribute real residues
+        assert batch["padding_mask"][0].sum() == 15
+        assert batch["padding_mask"][1].sum() == 15
+        # backbone block omitted because not all samples have backbone
+        assert "backbone_positions" not in batch
