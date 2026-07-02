@@ -1,0 +1,81 @@
+{
+  "env": {
+    "timestamp_utc": "2026-07-02T20:33:51+00:00",
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26100-SP0",
+    "numpy": "1.26.4",
+    "zarr": "2.18.7",
+    "proteintensor": "0.2.0",
+    "measures": "per-epoch MSA load: A3M parse vs .ptt read. Generation NOT measured."
+  },
+  "cases": [
+    {
+      "n_res": 76,
+      "n_seq": 512,
+      "a3m_kb": 43.5,
+      "ptt_msa_kb": 33.7,
+      "timings_ms": {
+        "a3m_parse": 6.3034,
+        "ptt_read_msa": 1.8655,
+        "ptt_mmap_open": 0.5076
+      },
+      "load_speedup_vs_a3m": 3.38,
+      "roundtrip_lossless": {
+        "tokens": true,
+        "profile": true,
+        "deletion_matrix": true
+      }
+    },
+    {
+      "n_res": 300,
+      "n_seq": 1024,
+      "a3m_kb": 311.1,
+      "ptt_msa_kb": 258.6,
+      "timings_ms": {
+        "a3m_parse": 18.6002,
+        "ptt_read_msa": 4.7671,
+        "ptt_mmap_open": 0.4993
+      },
+      "load_speedup_vs_a3m": 3.9,
+      "roundtrip_lossless": {
+        "tokens": true,
+        "profile": true,
+        "deletion_matrix": true
+      }
+    },
+    {
+      "n_res": 574,
+      "n_seq": 2048,
+      "a3m_kb": 1171.3,
+      "ptt_msa_kb": 846.4,
+      "timings_ms": {
+        "a3m_parse": 54.4643,
+        "ptt_read_msa": 11.0017,
+        "ptt_mmap_open": 0.492
+      },
+      "load_speedup_vs_a3m": 4.95,
+      "roundtrip_lossless": {
+        "tokens": true,
+        "profile": true,
+        "deletion_matrix": true
+      }
+    },
+    {
+      "n_res": 1000,
+      "n_seq": 4096,
+      "a3m_kb": 4047.7,
+      "ptt_msa_kb": 2725.9,
+      "timings_ms": {
+        "a3m_parse": 174.0184,
+        "ptt_read_msa": 29.6402,
+        "ptt_mmap_open": 0.5199
+      },
+      "load_speedup_vs_a3m": 5.87,
+      "roundtrip_lossless": {
+        "tokens": true,
+        "profile": true,
+        "deletion_matrix": true
+      }
+    }
+  ]
+}

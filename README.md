@@ -176,7 +176,8 @@ above - not end-to-end measurements at 100k scale.
 > (building the alignment once with JackHMMER) and is a **literature-based
 > projection**, not something benchmarked here. What *is* measured on hardware is
 > the recurring per-epoch MSA **load** - reading a cached MSA from `.ptt` vs
-> re-parsing A3M text each epoch: **3.8x-25x**, growing with MSA depth. See
+> re-parsing A3M text each epoch (against a vectorized A3M parser baseline):
+> **3.4x-5.9x**, growing with MSA depth. See
 > [`benchmarks/MSA_RESULTS.md`](benchmarks/MSA_RESULTS.md). These are different
 > quantities; do not read the 1,794x as a measured load speedup.
 

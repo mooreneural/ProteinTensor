@@ -50,6 +50,16 @@ CHAR_TO_TOKEN.update({
     "J": AA_UNK, "U": AA_UNK, "O": AA_UNK,
 })
 
+# Byte-indexed lookup tables for vectorized A3M parsing. Any byte not mapped in
+# CHAR_TO_TOKEN resolves to AA_UNK. Lowercase letters and '.' are insertions.
+_BYTE_TO_TOKEN = np.full(256, AA_UNK, dtype=np.int32)
+for _ch, _tok in CHAR_TO_TOKEN.items():
+    _BYTE_TO_TOKEN[ord(_ch)] = _tok
+
+_BYTE_IS_INSERTION = np.zeros(256, dtype=bool)
+_BYTE_IS_INSERTION[ord("a"):ord("z") + 1] = True
+_BYTE_IS_INSERTION[ord(".")] = True
+
 
 # ---------------------------------------------------------------------------
 # Data container
@@ -132,23 +142,23 @@ def from_a3m(
     if not raw_seqs:
         raise ValueError(f"No sequences found in {path}")
 
-    aligned_seqs, del_rows = zip(*(_parse_a3m_row(s) for s in raw_seqs))
-    query_len = len(aligned_seqs[0])
+    parsed = [_parse_a3m_row(s) for s in raw_seqs]
+    query_len = int(parsed[0][1].shape[0])   # aligned length of the query row
 
-    N_seq = len(aligned_seqs)
+    N_seq = len(parsed)
     tokens = np.full((N_seq, query_len), MSA_GAP, dtype=np.int32)
     deletion_matrix = np.zeros((N_seq, query_len), dtype=np.float32)
 
-    for i, (seq, dels) in enumerate(zip(aligned_seqs, del_rows)):
-        n = min(len(seq), query_len)
-        for j in range(n):
-            tokens[i, j] = CHAR_TO_TOKEN.get(seq[j], AA_UNK)
-        deletion_matrix[i, :len(dels)] = dels[:query_len]
+    for i, (_aligned_bytes, tok, dels) in enumerate(parsed):
+        n = min(tok.shape[0], query_len)
+        tokens[i, :n]          = tok[:n]
+        deletion_matrix[i, :n] = dels[:n]
 
     profile, deletion_mean = compute_profile(tokens)
 
-    # Hash the query sequence (gaps stripped) for provenance
-    query_seq = "".join(c for c in aligned_seqs[0] if c != "-")
+    # Hash the query sequence (row 0, gaps stripped) for provenance
+    q_bytes = parsed[0][0]
+    query_seq = q_bytes[q_bytes != ord("-")].tobytes().decode("ascii", "replace")
     seq_hash = hashlib.sha256(query_seq.encode()).hexdigest()
 
     return MsaData(
@@ -187,20 +197,25 @@ def _read_a3m_sequences(text: str) -> list[str]:
     return seqs
 
 
-def _parse_a3m_row(seq: str) -> tuple[str, np.ndarray]:
-    """Split one A3M row into aligned characters and per-column deletion counts.
+def _parse_a3m_row(seq: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Split one A3M row into aligned tokens and per-column deletion counts.
 
     Lowercase letters and '.' are insertions - they increment the deletion
     counter for the next aligned column and are excluded from the output.
+    Fully vectorized: no per-character Python loop.
+
+    Returns
+    -------
+    aligned_bytes : uint8   [n_aligned]  raw aligned characters (uppercase / '-')
+    tokens        : int32   [n_aligned]  MSA vocab token per aligned column
+    deletions     : float32 [n_aligned]  insertions immediately before each column
     """
-    aligned: list[str] = []
-    dels: list[int] = []
-    insertions = 0
-    for ch in seq:
-        if ch.islower() or ch == ".":
-            insertions += 1
-        else:
-            aligned.append(ch)
-            dels.append(insertions)
-            insertions = 0
-    return "".join(aligned), np.array(dels, dtype=np.float32)
+    b = np.frombuffer(seq.encode("ascii", "replace"), dtype=np.uint8)
+    is_ins = _BYTE_IS_INSERTION[b]
+    aligned_pos = np.flatnonzero(~is_ins)
+    aligned_bytes = b[aligned_pos]
+    tokens = _BYTE_TO_TOKEN[aligned_bytes]
+    # Deletions before column k = insertions between aligned column k-1 and k.
+    csum = np.cumsum(is_ins)
+    deletions = np.diff(csum[aligned_pos], prepend=0).astype(np.float32)
+    return aligned_bytes, tokens, deletions

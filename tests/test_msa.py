@@ -260,3 +260,57 @@ def test_char_to_token_coverage():
     for letter, three in _1TO3.items():
         assert CHAR_TO_TOKEN[letter] == AA_VOCAB[three]
     assert CHAR_TO_TOKEN["-"] == MSA_GAP
+
+
+# ---------------------------------------------------------------------------
+# vectorized from_a3m must be bit-identical to the original scalar algorithm
+# ---------------------------------------------------------------------------
+
+def _reference_from_a3m(raw_seqs):
+    """Original pure-Python A3M tokenization, kept here as a correctness oracle."""
+    from proteintensor.schema import AA_UNK
+
+    def parse_row(seq):
+        aligned, dels, ins = [], [], 0
+        for ch in seq:
+            if ch.islower() or ch == ".":
+                ins += 1
+            else:
+                aligned.append(ch)
+                dels.append(ins)
+                ins = 0
+        return "".join(aligned), np.array(dels, dtype=np.float32)
+
+    aligned_seqs, del_rows = zip(*(parse_row(s) for s in raw_seqs))
+    query_len = len(aligned_seqs[0])
+    N = len(aligned_seqs)
+    tokens = np.full((N, query_len), MSA_GAP, dtype=np.int32)
+    dm = np.zeros((N, query_len), dtype=np.float32)
+    for i, (s, d) in enumerate(zip(aligned_seqs, del_rows)):
+        n = min(len(s), query_len)
+        for j in range(n):
+            tokens[i, j] = CHAR_TO_TOKEN.get(s[j], AA_UNK)
+        dm[i, :len(d)] = d[:query_len]
+    return tokens, dm
+
+
+def test_vectorized_from_a3m_matches_reference():
+    rows = [
+        "ACDEFGHIKL",     # query: 10 aligned columns, no gaps
+        "AC-EFGHIKL",     # internal gap
+        "ACDefGHIKL",     # lowercase insertions 'ef' -> shorter aligned row
+        "ACDEFGHIKLMN",   # longer than query -> truncated to query_len
+        "aaACDEFGHIKL",   # leading insertions -> deletion count at column 0
+        "ACDEFGHIK.L",    # '.' insertion between K and L
+        "ACDEFGXBZL",     # non-standard chars X/B/Z -> UNK
+    ]
+    text = "".join(f">seq{i}\n{r}\n" for i, r in enumerate(rows))
+    with tempfile.NamedTemporaryFile(suffix=".a3m", mode="w", delete=False) as f:
+        f.write(text)
+        fname = f.name
+
+    msa = from_a3m(fname)
+    ref_tokens, ref_dm = _reference_from_a3m(rows)
+
+    np.testing.assert_array_equal(msa.tokens, ref_tokens)
+    np.testing.assert_array_equal(msa.deletion_matrix, ref_dm)
