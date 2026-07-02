@@ -1,4 +1,6 @@
-# HelixDB / ProteinTensor
+# ProteinTensor Introduction
+
+![ProteinTensor - AI-native protein data format: convert structure or sequence into cached tensors](assets/banner.png)
 
 **ProteinTensor** is an AI-native biomolecular storage format designed to eliminate
 the preprocessing bottleneck in modern structural biology machine learning pipelines.
