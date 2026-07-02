@@ -43,10 +43,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-torch = ["torch>=2.0"]
-jax   = ["jax>=0.4"]
-cloud = ["fsspec>=2023.1", "s3fs>=2023.1", "gcsfs>=2023.1"]
-dev   = ["pytest>=7", "pytest-benchmark", "pytest-cov", "fsspec>=2023.1"]
+torch    = ["torch>=2.0"]
+jax      = ["jax>=0.4"]
+cloud    = ["fsspec>=2023.1", "s3fs>=2023.1", "gcsfs>=2023.1"]
+ligands  = ["rdkit>=2023.3"]
+dev      = ["pytest>=7", "pytest-benchmark", "pytest-cov", "fsspec>=2023.1"]
 
 [project.urls]
 Homepage = "https://github.com/mooreneural/HelixDB"

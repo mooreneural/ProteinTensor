@@ -54,6 +54,10 @@ def write(data: ProteinTensorData, path: str | Path, compression: str = "blosc")
         _arr(bonds, "edge_type",  data.bond_edge_type,  "uint8",  compressor)
         store.attrs["num_bonds"] = int(data.bond_edge_index.shape[1])
 
+    if data.ligands:
+        from .ligands import serialize_ligands
+        serialize_ligands(store, data.ligands, compressor)
+
 
 def add_msa(
     path: str | Path,

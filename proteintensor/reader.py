@@ -7,6 +7,7 @@ from .schema import ProteinTensorData, BackboneData, BondData
 from .msa import MsaData
 from .pairs import PairFeature
 from .embeddings import EmbeddingData
+from .ligands import deserialize_ligands
 from .remote import open_store
 
 
@@ -44,6 +45,7 @@ def read(
         backbone_mask=bb_mask,
         bond_edge_index=bond_edge_idx,
         bond_edge_type=bond_edge_type,
+        ligands=deserialize_ligands(store),
         pdb_id=attrs.get("pdb_id", ""),
         resolution=float(attrs["resolution"]) if attrs.get("resolution") is not None else float("nan"),
         method=attrs.get("method", ""),

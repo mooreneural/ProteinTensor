@@ -32,7 +32,9 @@ def main():
               type=click.Choice(["blosc", "none"]),
               help="Compression codec for the Zarr store.")
 @click.option("--pdb-id", default="", help="Override the PDB ID stored in metadata.")
-def convert(input_path: Path, output_path: Path, compression: str, pdb_id: str):
+@click.option("--ligands", is_flag=True,
+              help="Also capture non-polymer ligands (drugs, cofactors, ions).")
+def convert(input_path: Path, output_path: Path, compression: str, pdb_id: str, ligands: bool):
     """Convert an mmCIF or PDB file to ProteinTensor (.ptt) format."""
     from .converters.mmcif import from_mmcif
     from .writer import write
@@ -45,7 +47,7 @@ def convert(input_path: Path, output_path: Path, compression: str, pdb_id: str):
 
     with console.status(f"Parsing [bold]{input_path.name}[/bold] ..."):
         t0 = time.perf_counter()
-        data = from_mmcif(input_path, pdb_id=pdb_id)
+        data = from_mmcif(input_path, pdb_id=pdb_id, include_ligands=ligands)
         parse_ms = (time.perf_counter() - t0) * 1000
 
     with console.status(f"Writing [bold]{output_path}[/bold] ..."):
@@ -61,6 +63,9 @@ def convert(input_path: Path, output_path: Path, compression: str, pdb_id: str):
     tbl.add_row("Chains",     _chain_summary(data.chain_id))
     tbl.add_row("Residues",   f"{data.sequence_tokens.shape[0]:,}")
     tbl.add_row("Atoms",      f"{data.atom_positions.shape[0]:,}")
+    if ligands:
+        lig_names = ", ".join(l.name for l in data.ligands[:8]) or "none"
+        tbl.add_row("Ligands", f"{len(data.ligands)} ({lig_names})")
     tbl.add_row("Resolution", f"{data.resolution:.2f} A" if data.resolution == data.resolution else "N/A")
     tbl.add_row("Method",     data.method or "N/A")
     tbl.add_row("")
@@ -369,10 +374,12 @@ def benchmark(input_path: Path, ptt_path: Path | None, rounds: int):
 @click.option("--workers", default=0, show_default=True,
               help="Parallel worker processes (0 = auto: min(8, CPU count)).")
 @click.option("--recursive", is_flag=True, help="Search INPUT_DIR recursively.")
+@click.option("--ligands", is_flag=True,
+              help="Also capture non-polymer ligands (drugs, cofactors, ions).")
 @click.option("--skip-existing/--overwrite", default=True, show_default=True,
               help="Skip inputs whose .ptt already exists, or rebuild them.")
 def convert_dir(input_dir: Path, output_dir: Path, compression: str,
-                workers: int, recursive: bool, skip_existing: bool):
+                workers: int, recursive: bool, ligands: bool, skip_existing: bool):
     """Batch-convert a directory of mmCIF/PDB files to .ptt format.
 
     Discovers .cif/.mmcif/.pdb/.ent files in INPUT_DIR and writes one .ptt per
@@ -394,14 +401,14 @@ def convert_dir(input_dir: Path, output_dir: Path, compression: str,
         )
         return
 
-    tasks: list[tuple[str, str, str]] = []
+    tasks: list[tuple[str, str, str, bool]] = []
     skipped_existing = 0
     for f in files:
         out = output_dir / f"{f.stem}.ptt"
         if skip_existing and out.exists():
             skipped_existing += 1
             continue
-        tasks.append((str(f), str(out), compression))
+        tasks.append((str(f), str(out), compression, ligands))
 
     if not tasks:
         console.print(
@@ -471,15 +478,15 @@ def _discover_structures(input_dir: Path, recursive: bool) -> list[Path]:
     )
 
 
-def _convert_one_file(task: tuple[str, str, str]) -> dict:
+def _convert_one_file(task: tuple[str, str, str, bool]) -> dict:
     """Convert one structure file to .ptt. Module-level so it is picklable for
     ProcessPoolExecutor. Returns a result dict; never raises."""
-    inp, outp, compression = task
+    inp, outp, compression, include_ligands = task
     from .converters.mmcif import from_mmcif
     from .writer import write
     try:
         t0 = time.perf_counter()
-        data = from_mmcif(Path(inp))
+        data = from_mmcif(Path(inp), include_ligands=include_ligands)
         write(data, Path(outp), compression=compression)
         return {
             "file": Path(inp).name,

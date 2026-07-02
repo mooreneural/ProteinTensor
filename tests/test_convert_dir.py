@@ -43,7 +43,7 @@ def test_convert_one_file_reports_error_for_bad_input(tmp_path):
     bad = tmp_path / "bad.cif"
     bad.write_text("this is not a structure file")
     out = tmp_path / "bad.ptt"
-    result = _convert_one_file((str(bad), str(out), "blosc"))
+    result = _convert_one_file((str(bad), str(out), "blosc", False))
     assert result["ok"] is False
     assert "error" in result
 

@@ -332,6 +332,20 @@ pt.add_pair_feature("1abc.ptt", my_array, name="template_pair",
 emb = pt.read_embedding("1abc.ptt", "esm2_t33_650M_UR50D")
 emb.data.shape      # (N_res, 1280)  float32  (upcast from float16 on load)
 
+# ------ Ligands / small molecules ------
+# Capture drugs, cofactors, and ions from a structure (opt-in)
+data = pt.from_mmcif("6oim.cif", include_ligands=True)
+[l.name for l in data.ligands]        # ['MG', 'GDP', 'MOV']  (MOV = sotorasib)
+
+ligs = pt.read_ligands("6oim.ptt")
+ligs[0].elements                      # (N_atoms,)  S2  element symbols
+ligs[0].positions                     # (N_atoms, 3)  float32
+pt.list_ligands("6oim.ptt")           # ['MG', 'GDP', 'MOV']
+
+# Build a ligand from SMILES (needs `pip install "proteintensor[ligands]"`)
+aspirin = pt.from_smiles("CC(=O)Oc1ccccc1C(=O)O", name="AIN")
+pt.add_ligand("target.ptt", aspirin)  # attach to an existing .ptt
+
 # ------ Lazy / zero-copy access ------
 positions = pt.mmap_positions("1abc.ptt")       # zarr.Array - no full load
 backbone  = pt.mmap_backbone("1abc.ptt")        # [N_res, 4, 3]
@@ -432,10 +446,16 @@ structure.ptt/                      Zarr directory store (v0.7)
 │   └── <name>/                              one sub-group per named feature
 │       ├── .zattrs                          channels, symmetric, dtype, description
 │       └── data           [N_res, N_res, C] any dtype, chunked 128x128xC
-└── embeddings/
-    └── <model>/                             one sub-group per PLM model
-        ├── .zattrs                          model, layer, dim, dtype, seq SHA-256
-        └── data           [N_res, D]        float32 or float16, chunked 256xD
+├── embeddings/
+│   └── <model>/                             one sub-group per PLM model
+│       ├── .zattrs                          model, layer, dim, dtype, seq SHA-256
+│       └── data           [N_res, D]        float32 or float16, chunked 256xD
+└── ligands/
+    └── <index>/                            one sub-group per non-polymer ligand
+        ├── .zattrs                          name (CCD), chain_id, res_num, smiles
+        ├── elements       [N_atoms]         S2       element symbols
+        ├── positions      [N_atoms, 3]      float32  Angstrom coordinates
+        └── b_factors      [N_atoms]         float32
 ```
 
 ### Multi-structure dataset layout
@@ -500,7 +520,7 @@ A3M parsing, Boltz adapter, multi-structure dataset, and cloud streaming
 - [ ] Sequence-identity dataset splitting - MMseqs2-based cluster splits to prevent data leakage between train / val / test
 
 **Format extensions**
-- [ ] Ligand / small-molecule support - SMILES, CCD-based atom graphs, binding site annotations for drug-protein interaction models
+- [x] Ligand / small-molecule support - CCD-based extraction from structures, SMILES input via RDKit, element/coordinate storage (bond graphs and binding-site annotations still to come)
 - [ ] MD trajectory storage - time axis `[N_frames, N_atoms, 3]` for conformational ensembles and AlphaFold 3 diffusion trajectories
 
 **Performance**

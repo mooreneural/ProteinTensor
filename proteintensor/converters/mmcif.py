@@ -6,11 +6,18 @@ from ..schema import ProteinTensorData, AA_VOCAB, AA_UNK, BACKBONE_ATOMS, N_BACK
 from ..bonds import build as build_bonds
 
 
-def from_mmcif(path: str | Path, pdb_id: str = "") -> ProteinTensorData:
+def from_mmcif(
+    path: str | Path,
+    pdb_id: str = "",
+    *,
+    include_ligands: bool = False,
+) -> ProteinTensorData:
     """Parse an mmCIF (or PDB) file into a ProteinTensorData.
 
-    Only polymer (amino acid) chains are included. Ligands, water, and
-    alternative conformations are stripped. Only the first model is used.
+    Only polymer (amino acid) chains are included in the structure tensors.
+    Water and alternative conformations are stripped; only the first model is
+    used. With ``include_ligands=True``, non-polymer non-water residues (drugs,
+    cofactors, ions) are additionally captured on ``data.ligands``.
     """
     try:
         import gemmi
@@ -25,7 +32,11 @@ def from_mmcif(path: str | Path, pdb_id: str = "") -> ProteinTensorData:
     structure.remove_alternative_conformations()
     structure.remove_hydrogens()
 
-    return _extract(structure, pdb_id)
+    data = _extract(structure, pdb_id)
+    if include_ligands:
+        from ..ligands import extract_from_gemmi
+        data.ligands = extract_from_gemmi(structure)
+    return data
 
 
 def _info(info, *keys: str) -> str:

@@ -35,6 +35,7 @@ import numpy as np
 import zarr
 
 from .schema import ProteinTensorData, FORMAT_VERSION
+from .ligands import deserialize_ligands
 from .remote import open_store, _is_url
 
 
@@ -318,6 +319,7 @@ def _read_group(grp: zarr.Group) -> ProteinTensorData:
         backbone_mask=bb_mask,
         bond_edge_index=bond_edge_idx,
         bond_edge_type=bond_edge_type,
+        ligands=deserialize_ligands(grp),
         pdb_id=attrs.get("pdb_id", ""),
         resolution=float(attrs["resolution"]) if attrs.get("resolution") is not None else float("nan"),
         method=attrs.get("method", ""),

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 
 FORMAT_VERSION = "0.7"
@@ -59,6 +59,29 @@ class BackboneData:
 
 
 @dataclass
+class LigandData:
+    """A small-molecule / non-polymer ligand (drug, cofactor, ion, etc.).
+
+    The CCD code (``name``) is the reliable chemical identity - downstream tools
+    such as Boltz resolve the canonical bond graph from it. Coordinates are the
+    observed pose from the source structure. ``smiles`` is populated only when
+    explicitly provided (e.g. via from_smiles); it is never inferred from
+    coordinates, which would be error-prone.
+    """
+    name: str                 # CCD / residue code, e.g. "STI", "JZ4", "GDP"
+    elements: np.ndarray      # S2      [N_atoms]  element symbols ("C", "N", "Mg")
+    positions: np.ndarray     # float32 [N_atoms, 3]  Angstrom coordinates
+    b_factors: np.ndarray     # float32 [N_atoms]
+    chain_id: str = ""        # source chain label
+    res_num: int = 0          # source residue number
+    smiles: str = ""          # canonical SMILES if known (never inferred from coords)
+
+    @property
+    def num_atoms(self) -> int:
+        return int(self.positions.shape[0])
+
+
+@dataclass
 class ProteinTensorData:
     # Sequence-level - shape [N_res]
     sequence_tokens: np.ndarray      # int32   residue vocab indices
@@ -83,6 +106,10 @@ class ProteinTensorData:
     # Covalent bond graph - bidirectional edges referencing atom_positions indices
     bond_edge_index: np.ndarray | None = None  # int32 [2, N_edges]
     bond_edge_type:  np.ndarray | None = None  # uint8 [N_edges]
+
+    # Small-molecule / non-polymer ligands (drugs, cofactors, ions). Empty by
+    # default; populated by from_mmcif(include_ligands=True) or add_ligand().
+    ligands: list["LigandData"] = field(default_factory=list)
 
     # Structure metadata
     pdb_id: str = ""

@@ -34,6 +34,8 @@ from .bonds import (
 from .dataset import ProteinDataset, create_dataset, add_to_dataset
 from .remote import consolidate
 from .converters import from_mmcif, from_sequence, from_fasta, parse_fasta
+from .ligands import read_ligands, list_ligands, add_ligand, from_smiles
+from .schema import LigandData
 
 __version__ = "0.2.0"
 
@@ -51,6 +53,8 @@ __all__ = [
     "compute_and_store_distances", "compute_and_store_contacts",
     # I/O - embeddings
     "read_embedding", "add_embedding", "list_embeddings", "mmap_embedding",
+    # Ligands / small molecules
+    "read_ligands", "list_ligands", "add_ligand", "from_smiles", "LigandData",
     # Data containers
     "ProteinTensorData", "BackboneData", "BondData", "MsaData", "PairFeature", "EmbeddingData",
     # MSA utilities
