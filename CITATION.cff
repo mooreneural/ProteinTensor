@@ -9,7 +9,7 @@ version: 0.3.0
 date-released: 2026-07-02
 url: "https://github.com/mooreneural/HelixDB"
 repository-code: "https://github.com/mooreneural/HelixDB"
-doi: 10.5281/zenodo.20788564
+doi: 10.5281/zenodo.21150065
 license: MIT
 abstract: >
   ProteinTensor is a Python library and file format (.ptt) that eliminates
