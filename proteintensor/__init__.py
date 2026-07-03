@@ -37,7 +37,7 @@ from .converters import from_mmcif, from_sequence, from_fasta, parse_fasta
 from .ligands import read_ligands, list_ligands, add_ligand, from_smiles
 from .schema import LigandData
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     # Converters - input
