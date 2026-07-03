@@ -175,24 +175,24 @@ above - not end-to-end measurements at 100k scale.
 
 | Operation | Traditional pipeline | ProteinTensor | Speedup |
 |---|---|---|---|
-| Structure load (parse mmCIF each epoch) | 3.7 hours | 5 min | **45x** |
-| Backbone-only load (template search) | 3.7 hours | 2 min | **109x** |
-| Full feature assembly (seq + MSA + pairs + emb) | 15 hours | 3.6 hours | **4x** |
-| MSA generation (JackHMMER, 32-core CPU, once) | 4,000 hours | 2.2 hours | **1,794x** |
+| Structure load (parse mmCIF each epoch) | 3.8 hours | 6 min | **37x** |
+| Backbone-only load (template search) | 3.8 hours | 2 min | **95x** |
+| Full feature assembly (seq + MSA + pairs + emb) | 16 hours | 3.9 hours | **4x** |
+| MSA generation (JackHMMER, 32-core CPU, once) | 4,000 hours | 2.7 hours | **1,477x** |
 
 > MSA generation assumes 2.4 min/protein on a 32-core server (PDB90 database, standard
 > AlphaFold settings). ProteinTensor generates MSAs once and loads from the `.ptt` cache
 > on every subsequent run. The 4,000-hour figure is the real cost AlphaFold2 and Boltz
 > users pay to build training datasets from scratch.
 
-> **Measured vs projected - read this.** The **1,794x** above is MSA *generation*
+> **Measured vs projected - read this.** The **1,477x** above is MSA *generation*
 > (building the alignment once with JackHMMER) and is a **literature-based
 > projection**, not something benchmarked here. What *is* measured on hardware is
 > the recurring per-epoch MSA **load** - reading a cached MSA from `.ptt` vs
 > re-parsing A3M text each epoch (against a vectorized A3M parser baseline):
 > **3.4x-5.9x**, growing with MSA depth. See
 > [`benchmarks/MSA_RESULTS.md`](benchmarks/MSA_RESULTS.md). These are different
-> quantities; do not read the 1,794x as a measured load speedup.
+> quantities; do not read the 1,477x as a measured load speedup.
 
 ### Disk tradeoff
 
