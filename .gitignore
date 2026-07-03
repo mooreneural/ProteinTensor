@@ -30,6 +30,9 @@ env/
 # Local dev / scratch scripts
 run_*.py
 
+# Generated benchmark output
+benchmark_results.json
+
 # OS
 .DS_Store
 Thumbs.db

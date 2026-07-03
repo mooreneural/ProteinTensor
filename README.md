@@ -67,20 +67,21 @@ performance format that turns a recurring computational tax into a one-time cost
 
 ## Benchmark: Traditional Pipeline vs ProteinTensor
 
-All timings are median over 30 rounds on an NVIDIA RTX 5080, CUDA 12.8, Python 3.11.
-Proteins span the full range from a 76-residue domain to a 3,525-residue CRISPR enzyme.
-Run `python boltz_benchmark.py` to reproduce.
+All timings are median over 30 rounds on a Windows workstation (RTX 5080, Python
+3.11.9); mmCIF parsing and `.ptt` reads are CPU-bound, so these reflect CPU
+performance. Proteins span the full range from a 76-residue domain to a
+3,525-residue CRISPR enzyme. Run `python boltz_benchmark.py` to reproduce.
 
 ### Per-structure load times
 
 | Structure | Method | Res | MSA seqs | mmCIF parse | ptt: full | ptt: backbone | ptt: bonds | ptt: MSA | ptt: dist mx |
 |---|---|---|---|---|---|---|---|---|---|
-| 1UBQ - Ubiquitin | X-ray | 76 | 512 | 7.2 ms | 2.8 ms | 1.2 ms | 0.7 ms | 1.6 ms | 0.8 ms |
-| 6LU7 - SARS-CoV-2 Mpro | X-ray | 312 | 1,024 | 29.6 ms | 2.9 ms | 1.2 ms | 0.7 ms | 5.1 ms | 2.0 ms |
-| 4HHB - Hemoglobin | X-ray | 574 | 2,048 | 55.3 ms | 2.9 ms | 1.2 ms | 0.7 ms | 11.3 ms | 3.5 ms |
-| 6M0J - ACE2 + RBD | Cryo-EM | 791 | 2,048 | 74.7 ms | 2.9 ms | 1.2 ms | 0.7 ms | 14.7 ms | 6.4 ms |
-| 6VXX - Spike trimer | Cryo-EM | 2,916 | 8,192 | 283.4 ms | 3.3 ms | 1.3 ms | 0.9 ms | 208.3 ms | 71.1 ms |
-| 6OHW - Cas12a | Cryo-EM | 3,525 | 8,192 | 352.4 ms | 3.3 ms | 1.2 ms | 1.0 ms | 240.7 ms | 104.5 ms |
+| 1UBQ - Ubiquitin | X-ray | 76 | 512 | 7.4 ms | 3.2 ms | 1.3 ms | 0.8 ms | 1.8 ms | 0.8 ms |
+| 6LU7 - SARS-CoV-2 Mpro | X-ray | 312 | 1,024 | 28.7 ms | 3.3 ms | 1.3 ms | 0.8 ms | 5.2 ms | 1.9 ms |
+| 4HHB - Hemoglobin | X-ray | 574 | 2,048 | 54.1 ms | 3.3 ms | 1.3 ms | 0.8 ms | 11.5 ms | 3.6 ms |
+| 6M0J - ACE2 + RBD | Cryo-EM | 791 | 2,048 | 73.2 ms | 3.3 ms | 1.4 ms | 0.8 ms | 15.3 ms | 6.9 ms |
+| 6VXX - Spike trimer | Cryo-EM | 2,916 | 8,192 | 283.9 ms | 3.7 ms | 1.4 ms | 1.0 ms | 213.7 ms | 74.7 ms |
+| 6OHW - Cas12a | Cryo-EM | 3,525 | 8,192 | 346.5 ms | 3.7 ms | 1.3 ms | 1.0 ms | 243.9 ms | 107.3 ms |
 
 **Column definitions**
 - `ptt: full` - `read()` - all atoms, backbone, bonds, metadata
@@ -93,12 +94,12 @@ Run `python boltz_benchmark.py` to reproduce.
 
 | Structure | Res | full | backbone | bonds | MSA | dist mx |
 |---|---|---|---|---|---|---|
-| 1UBQ - Ubiquitin | 76 | 3x | 6x | 11x | 4x | 9x |
-| 6LU7 - SARS-CoV-2 Mpro | 312 | 10x | 24x | 43x | 6x | 15x |
-| 4HHB - Hemoglobin | 574 | 19x | 45x | 78x | 5x | 16x |
-| 6M0J - ACE2 + RBD | 791 | 26x | 61x | 102x | 5x | 12x |
-| 6VXX - Spike trimer | 2,916 | 87x | 223x | 308x | 1x* | 4x |
-| 6OHW - Cas12a | 3,525 | 108x | 284x | 370x | 1x* | 3x |
+| 1UBQ - Ubiquitin | 76 | 2x | 6x | 10x | 4x | 9x |
+| 6LU7 - SARS-CoV-2 Mpro | 312 | 9x | 21x | 38x | 5x | 15x |
+| 4HHB - Hemoglobin | 574 | 17x | 40x | 70x | 5x | 15x |
+| 6M0J - ACE2 + RBD | 791 | 22x | 54x | 92x | 5x | 11x |
+| 6VXX - Spike trimer | 2,916 | 76x | 201x | 285x | 1x* | 4x |
+| 6OHW - Cas12a | 3,525 | 95x | 257x | 343x | 1x* | 3x |
 
 *MSA speedup shown as 1x vs mmCIF parse because both are in the same time range for
 large proteins - the real MSA comparison is vs JackHMMER generation (see below).
@@ -138,21 +139,21 @@ IgG1 antibody. Numbers are consistent with the structural biology benchmark abov
 
 | Target | Res | mmCIF parse | ptt: full | ptt: backbone | ptt: bonds | ptt: MSA | ptt: dist mx |
 |---|---|---|---|---|---|---|---|
-| 6OIM - KRAS G12C + Sotorasib | 167 | 16.6 ms | 2.8 ms | 1.2 ms | 0.7 ms | 2.8 ms | 1.1 ms |
-| 3HTB - HIV-1 protease | 163 | 16.0 ms | 2.8 ms | 1.2 ms | 0.7 ms | 2.7 ms | 1.1 ms |
-| 5WT9 - PD-L1 checkpoint | 533 | 53.8 ms | 2.9 ms | 1.2 ms | 0.7 ms | 13.1 ms | 3.3 ms |
-| 1TUP - p53 tumor suppressor | 585 | 56.5 ms | 2.8 ms | 1.2 ms | 0.7 ms | 12.4 ms | 3.4 ms |
-| 2P4E - PCSK9 | 586 | 54.7 ms | 2.8 ms | 1.2 ms | 0.7 ms | 12.1 ms | 3.4 ms |
-| 1IGT - IgG1 antibody | 1,316 | 123.4 ms | 2.9 ms | 1.2 ms | 0.8 ms | 46.8 ms | 16.4 ms |
+| 6OIM - KRAS G12C + Sotorasib | 167 | 17.1 ms | 3.4 ms | 1.3 ms | 0.8 ms | 3.0 ms | 1.3 ms |
+| 3HTB - HIV-1 protease | 163 | 16.5 ms | 3.3 ms | 1.4 ms | 0.8 ms | 2.8 ms | 1.3 ms |
+| 5WT9 - PD-L1 checkpoint | 533 | 54.8 ms | 3.8 ms | 1.4 ms | 0.8 ms | 11.9 ms | 3.8 ms |
+| 1TUP - p53 tumor suppressor | 585 | 57.4 ms | 3.4 ms | 1.4 ms | 0.8 ms | 13.0 ms | 4.0 ms |
+| 2P4E - PCSK9 | 586 | 55.4 ms | 3.4 ms | 1.4 ms | 0.8 ms | 12.8 ms | 4.1 ms |
+| 1IGT - IgG1 antibody | 1,316 | 127.3 ms | 3.5 ms | 1.4 ms | 0.8 ms | 47.1 ms | 17.9 ms |
 
 | Target | Res | full | backbone | bonds | MSA | dist mx |
 |---|---|---|---|---|---|---|
-| 6OIM - KRAS G12C + Sotorasib | 167 | 6x | 14x | 24x | 6x | 15x |
-| 3HTB - HIV-1 protease | 163 | 6x | 14x | 23x | 6x | 14x |
-| 5WT9 - PD-L1 checkpoint | 533 | 19x | 44x | 77x | 4x | 16x |
-| 1TUP - p53 tumor suppressor | 585 | 20x | 47x | 80x | 5x | 17x |
-| 2P4E - PCSK9 | 586 | 19x | 46x | 77x | 5x | 16x |
-| 1IGT - IgG1 antibody | 1,316 | 42x | **100x** | **162x** | 3x | 8x |
+| 6OIM - KRAS G12C + Sotorasib | 167 | 5x | 13x | 22x | 6x | 13x |
+| 3HTB - HIV-1 protease | 163 | 5x | 12x | 21x | 6x | 13x |
+| 5WT9 - PD-L1 checkpoint | 533 | 15x | 40x | 69x | 5x | 14x |
+| 1TUP - p53 tumor suppressor | 585 | 17x | 42x | 71x | 4x | 14x |
+| 2P4E - PCSK9 | 586 | 16x | 41x | 70x | 4x | 14x |
+| 1IGT - IgG1 antibody | 1,316 | 37x | **92x** | **156x** | 3x | 7x |
 
 ### DataLoader batch throughput
 
@@ -161,11 +162,11 @@ padded batches ready for `model.forward()`. Single process, no prefetch workers.
 
 | Batch size | ms / batch | Structures / sec |
 |---|---|---|
-| 1 | 0.01 ms | 88,106 |
-| 4 | 0.04 ms | 108,696 |
-| 8 | 0.37 ms | 21,707 |
-| 16 | 0.95 ms | 16,783 |
-| 32 | 2.0 ms | **15,854** |
+| 1 | 0.01 ms | 97,088 |
+| 4 | 0.03 ms | 116,279 |
+| 8 | 0.42 ms | 19,242 |
+| 16 | 0.97 ms | 16,412 |
+| 32 | 2.1 ms | **15,033** |
 
 ### Scale projection: 100,000 structures, one training epoch
 

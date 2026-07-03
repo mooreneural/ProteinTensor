@@ -18,6 +18,7 @@ Sections
 Run:  python boltz_benchmark.py
 """
 import json
+import platform
 import sys
 import tempfile
 import time
@@ -74,6 +75,28 @@ def _mock_msa(n_seq: int, n_res: int):
 def _mock_embedding(n_res: int, dim: int = 1280) -> np.ndarray:
     return np.random.default_rng(1).standard_normal((n_res, dim)).astype(np.float32)
 
+_AA = np.array(list("ARNDCQEGHILKMFPSTWYV"))
+
+def _write_a3m(path: Path, query: str, n_seq: int, seed: int = 0) -> None:
+    """Write a realistic synthetic A3M (query + homologs with mutations and gaps).
+
+    Used to measure the real traditional per-epoch cost of parsing an MSA from a
+    text file, instead of a hardcoded estimate. Content is synthetic; dimensions
+    and file size are realistic, which is what parse time depends on.
+    """
+    rng = np.random.default_rng(seed)
+    base = np.array(list(query))
+    n_res = len(query)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(">query\n" + query + "\n")
+        for i in range(n_seq - 1):
+            r = rng.random(n_res)
+            row = base.copy()
+            mut = r < 0.20
+            row[mut] = rng.choice(_AA, int(mut.sum()))
+            row[(r >= 0.20) & (r < 0.25)] = "-"
+            fh.write(f">s{i}\n" + "".join(row) + "\n")
+
 def _time(n: int, fn) -> np.ndarray:
     times = []
     for _ in range(n):
@@ -112,6 +135,8 @@ print(_double_sep(110))
 print()
 
 from proteintensor.converters import from_mmcif
+from proteintensor.msa import from_a3m
+from proteintensor.schema import tokens_to_sequence
 from proteintensor import (
     write, read, read_backbone, read_bonds, read_msa, add_msa,
     read_pair_feature, compute_and_store_distances, compute_and_store_contacts,
@@ -140,6 +165,10 @@ for pid, label, method, approx_res in PROTEINS:
     add_embedding(ptt, _mock_embedding(n_res, 1280),
                   model="esm2_t33_650M_UR50D", dtype="float16")
 
+    # A real A3M file so Section 2 can measure the traditional MSA parse cost.
+    a3m = tmpdir / f"{pid}.a3m"
+    _write_a3m(a3m, tokens_to_sequence(data.sequence_tokens), n_seq)
+
     cif_kb = cif.stat().st_size // 1024
     ptt_kb = sum(f.stat().st_size for f in ptt.rglob("*") if f.is_file()) // 1024
 
@@ -154,6 +183,7 @@ for pid, label, method, approx_res in PROTEINS:
         "ptt_kb": ptt_kb,
         "ptt":    ptt,
         "cif":    cif,
+        "a3m":    a3m,
     })
     print(f"  {pid:6s}  {label:22s}  {n_res:5,} res  {n_seq:5,} MSA seqs  "
           f"mmCIF {cif_kb:5,} KB  ptt {ptt_kb:6,} KB")
@@ -229,9 +259,8 @@ total_trad_ms = 0.0
 total_ptt_ms  = 0.0
 
 for r in rows:
-    # Traditional: mmCIF parse + MSA read from A3M (proportional to n_seq * n_res)
-    # A3M read is dominated by text parsing; empirical: ~0.4 ms per 1000 tokens
-    a3m_parse_ms = r["n_seq"] * r["n_res"] * 0.0004
+    # Traditional: mmCIF parse + real MSA parse from the A3M text file.
+    a3m_parse_ms = float(np.median(_time(5, lambda a=r["a3m"]: from_a3m(str(a)))))
     trad_ms = r["mmcif_ms"] + a3m_parse_ms
 
     # ProteinTensor: single .ptt read (includes backbone, bonds, MSA, dist, embedding)
@@ -470,10 +499,11 @@ print()
 # ---------------------------------------------------------------------------
 
 results = {
-    "hardware": "NVIDIA RTX 5080 / CUDA 12.8 / Python 3.11",
+    "hardware": f"{platform.platform()} / Python {sys.version.split()[0]} "
+                f"(parse/read timings are CPU-bound)",
     "rounds": ROUNDS,
     "structures": [
-        {k: v for k, v in r.items() if k not in ("ptt", "cif")}
+        {k: v for k, v in r.items() if k not in ("ptt", "cif", "a3m")}
         for r in rows
     ],
     "batch_throughput": batch_results,
