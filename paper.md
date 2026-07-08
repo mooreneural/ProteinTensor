@@ -21,7 +21,7 @@ archive_doi: https://doi.org/10.5281/zenodo.21150065
 # Summary
 
 ProteinTensor (distributed as the `proteintensor` Python package, hosted
-at github.com/mooreneural/HelixDB) is a Python library and file format
+at github.com/mooreneural/ProteinTensor) is a Python library and file format
 (`.ptt`) for storing
 pre-computed tensors required by structural biology machine learning models.
 Rather than re-parsing text-based structure files at every training epoch,

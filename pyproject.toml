@@ -50,9 +50,9 @@ ligands  = ["rdkit>=2023.3"]
 dev      = ["pytest>=7", "pytest-benchmark", "pytest-cov", "fsspec>=2023.1"]
 
 [project.urls]
-Homepage = "https://github.com/mooreneural/HelixDB"
-Repository = "https://github.com/mooreneural/HelixDB"
-"Bug Tracker" = "https://github.com/mooreneural/HelixDB/issues"
+Homepage = "https://github.com/mooreneural/ProteinTensor"
+Repository = "https://github.com/mooreneural/ProteinTensor"
+"Bug Tracker" = "https://github.com/mooreneural/ProteinTensor/issues"
 
 [project.scripts]
 proteintensor = "proteintensor.cli:main"

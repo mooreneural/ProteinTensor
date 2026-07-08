@@ -7,8 +7,8 @@ authors:
     given-names: Clayton W.
 version: 0.3.0
 date-released: 2026-07-02
-url: "https://github.com/mooreneural/HelixDB"
-repository-code: "https://github.com/mooreneural/HelixDB"
+url: "https://github.com/mooreneural/ProteinTensor"
+repository-code: "https://github.com/mooreneural/ProteinTensor"
 doi: 10.5281/zenodo.21150065
 license: MIT
 abstract: >
@@ -38,4 +38,4 @@ preferred-citation:
       given-names: Clayton W.
   journal: "Journal of Open Source Software"
   year: 2026
-  url: "https://github.com/mooreneural/HelixDB"
+  url: "https://github.com/mooreneural/ProteinTensor"
