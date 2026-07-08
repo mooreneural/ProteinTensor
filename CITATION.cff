@@ -5,8 +5,8 @@ title: "ProteinTensor: AI-Native Biomolecular Tensor Storage for Structural Biol
 authors:
   - family-names: Moore
     given-names: Clayton W.
-version: 0.3.0
-date-released: 2026-07-02
+version: 0.4.0
+date-released: 2026-07-08
 url: "https://github.com/mooreneural/ProteinTensor"
 repository-code: "https://github.com/mooreneural/ProteinTensor"
 doi: 10.5281/zenodo.21150065
