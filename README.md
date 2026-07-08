@@ -198,7 +198,10 @@ A full-featured `.ptt` (8,192-sequence MSA + distance matrix + ESM2-650M embeddi
 float16) averages **23x larger** than the source mmCIF across the six benchmark structures.
 The tradeoff is deliberate: pay disk space once to avoid paying GPU-hours and CPU-hours
 on every training run. A structure-only `.ptt` with no cached features is smaller than
-the source mmCIF.
+the source mmCIF. The dominant `O(N^2)` cost - dense pair features - can be stored as a
+sparse radius graph instead (`compute_and_store_distances_sparse`), cutting the distance
+matrix 2x-76x on disk with no loss inside the cutoff (see
+[`benchmarks/SPARSE_PAIRS_RESULTS.md`](benchmarks/SPARSE_PAIRS_RESULTS.md)).
 
 ---
 
@@ -339,6 +342,15 @@ dist.data.shape     # (N_res, N_res, 1)  float32
 pt.add_pair_feature("1abc.ptt", my_array, name="template_pair",
                     symmetric=False, dtype="float16")
 
+# Sparse pair features (radius graph) - O(N*k) storage instead of dense O(N^2).
+# Real proteins have local contact structure, so keeping only pairs within a
+# cutoff shrinks the Ca-Ca distance matrix 2x (small) to ~76x (3,525-residue
+# enzyme) on disk, losslessly within the cutoff. See benchmarks/SPARSE_PAIRS_RESULTS.md.
+pt.compute_and_store_distances_sparse("1abc.ptt", cutoff=15.0)  # keep pairs <= 15 A
+sp = pt.read_pair_feature_sparse("1abc.ptt", "distance_matrix")
+sp.nnz, sp.density         # kept entries; fraction of N^2 retained
+dense = sp.to_dense()      # rehydrate to [N_res, N_res, 1] for dense-only adapters
+
 # ------ PLM embeddings ------
 emb = pt.read_embedding("1abc.ptt", "esm2_t33_650M_UR50D")
 emb.data.shape      # (N_res, 1280)  float32  (upcast from float16 on load)
@@ -457,6 +469,11 @@ structure.ptt/                      Zarr directory store (v0.7)
 │   └── <name>/                              one sub-group per named feature
 │       ├── .zattrs                          channels, symmetric, dtype, description
 │       └── data           [N_res, N_res, C] any dtype, chunked 128x128xC
+├── pairs_sparse/
+│   └── <name>/                              sparse COO pair feature (radius graph)
+│       ├── .zattrs                          n_residues, channels, nnz, mode, cutoff, symmetric
+│       ├── indices        [2, nnz]          int32    kept (row, col) pairs
+│       └── values         [nnz, C]          any dtype  value per kept pair
 ├── embeddings/
 │   └── <model>/                             one sub-group per PLM model
 │       ├── .zattrs                          model, layer, dim, dtype, seq SHA-256

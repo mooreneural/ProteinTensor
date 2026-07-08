@@ -1,0 +1,91 @@
+{
+  "env": {
+    "timestamp_utc": "2026-07-08T17:40:39+00:00",
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26100-SP0",
+    "numpy": "1.26.4",
+    "zarr": "2.18.7",
+    "proteintensor": "0.3.0",
+    "cutoff_angstrom": 15.0
+  },
+  "cases": [
+    {
+      "id": "1UBQ",
+      "n_res": 76,
+      "cutoff": 15.0,
+      "nnz": 1492,
+      "density_pct": 25.83,
+      "dense_kb": 18.3,
+      "sparse_kb": 8.6,
+      "disk_reduction": 2.1,
+      "dense_read_ms": 0.895,
+      "sparse_read_ms": 1.147,
+      "roundtrip_lossless": true
+    },
+    {
+      "id": "6LU7",
+      "n_res": 312,
+      "cutoff": 15.0,
+      "nnz": 8593,
+      "density_pct": 8.83,
+      "dense_kb": 340.1,
+      "sparse_kb": 45.1,
+      "disk_reduction": 7.5,
+      "dense_read_ms": 1.935,
+      "sparse_read_ms": 1.097,
+      "roundtrip_lossless": true
+    },
+    {
+      "id": "4HHB",
+      "n_res": 574,
+      "cutoff": 15.0,
+      "nnz": 15894,
+      "density_pct": 4.82,
+      "dense_kb": 1051.7,
+      "sparse_kb": 81.5,
+      "disk_reduction": 12.9,
+      "dense_read_ms": 4.195,
+      "sparse_read_ms": 1.121,
+      "roundtrip_lossless": true
+    },
+    {
+      "id": "6M0J",
+      "n_res": 791,
+      "cutoff": 15.0,
+      "nnz": 21755,
+      "density_pct": 3.48,
+      "dense_kb": 1943.9,
+      "sparse_kb": 111.8,
+      "disk_reduction": 17.4,
+      "dense_read_ms": 6.923,
+      "sparse_read_ms": 1.126,
+      "roundtrip_lossless": true
+    },
+    {
+      "id": "6VXX",
+      "n_res": 2916,
+      "cutoff": 15.0,
+      "nnz": 86753,
+      "density_pct": 1.02,
+      "dense_kb": 25032.6,
+      "sparse_kb": 384.0,
+      "disk_reduction": 65.2,
+      "dense_read_ms": 78.596,
+      "sparse_read_ms": 2.482,
+      "roundtrip_lossless": true
+    },
+    {
+      "id": "6OHW",
+      "n_res": 3525,
+      "cutoff": 15.0,
+      "nnz": 109165,
+      "density_pct": 0.88,
+      "dense_kb": 36410.4,
+      "sparse_kb": 481.4,
+      "disk_reduction": 75.6,
+      "dense_read_ms": 111.768,
+      "sparse_read_ms": 2.707,
+      "roundtrip_lossless": true
+    }
+  ]
+}

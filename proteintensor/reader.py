@@ -205,6 +205,48 @@ def mmap_pair_feature(
     return store[f"pairs/{name}/data"]
 
 
+def list_pair_features_sparse(
+    path: str | Path,
+    storage_options: dict | None = None,
+) -> list[str]:
+    """Return the names of all sparse pair feature tensors in a .ptt file."""
+    store = open_store(path, storage_options=storage_options)
+    if "pairs_sparse" not in store:
+        return []
+    return list(store["pairs_sparse"].keys())
+
+
+def read_pair_feature_sparse(
+    path: str | Path,
+    name: str,
+    storage_options: dict | None = None,
+) -> "SparsePairFeature":
+    """Load a sparse (COO) pair feature. Use ``.to_dense()`` to rehydrate."""
+    from .pairs import SparsePairFeature
+    store = open_store(path, storage_options=storage_options)
+    if "pairs_sparse" not in store or name not in store["pairs_sparse"]:
+        available = list(store["pairs_sparse"].keys()) if "pairs_sparse" in store else []
+        raise KeyError(
+            f"Sparse pair feature '{name}' not found in {path}. "
+            f"Available: {available or '(none)'}"
+        )
+    grp = store[f"pairs_sparse/{name}"]
+    attrs = dict(grp.attrs)
+    return SparsePairFeature(
+        indices=grp["indices"][:],
+        values=grp["values"][:],
+        n_residues=int(attrs.get("n_residues", 0)),
+        channels=int(attrs.get("channels", 1)),
+        symmetric=bool(attrs.get("symmetric", False)),
+        fill_value=float(attrs.get("fill_value", 0.0)),
+        mode=attrs.get("mode", "mask"),
+        cutoff=float(attrs.get("cutoff", float("nan"))),
+        dtype=attrs.get("dtype", "float32"),
+        description=attrs.get("description", ""),
+        created_at=float(attrs.get("created_at", 0.0)),
+    )
+
+
 def list_embeddings(
     path: str | Path,
     storage_options: dict | None = None,

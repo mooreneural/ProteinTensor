@@ -46,6 +46,93 @@ class PairFeature:
         return int(self.data.shape[0])
 
 
+@dataclass
+class SparsePairFeature:
+    """A sparse (COO) pairwise feature loaded from a .ptt file.
+
+    Only the kept (i, j) entries are stored. For symmetric features only the
+    upper triangle (i <= j) is stored and mirrored on densify, roughly halving
+    the entry count. Everything else is implicitly ``fill_value``.
+    """
+    indices:     np.ndarray   # int32 [2, nnz]   (row, col)
+    values:      np.ndarray   # [nnz, C]
+    n_residues:  int
+    channels:    int
+    symmetric:   bool
+    fill_value:  float
+    mode:        str          # "radius" | "threshold" | "nonzero" | "mask"
+    cutoff:      float        # radius/threshold used (nan if not applicable)
+    dtype:       str
+    description: str
+    created_at:  float
+
+    @property
+    def nnz(self) -> int:
+        return int(self.indices.shape[1])
+
+    @property
+    def density(self) -> float:
+        n = self.n_residues
+        return self.nnz / float(n * n) if n else 0.0
+
+    def to_dense(self) -> np.ndarray:
+        """Rehydrate to a dense [N_res, N_res, C] array (the edge shim)."""
+        n, c = self.n_residues, self.channels
+        dense = np.full((n, n, c), self.fill_value, dtype=self.dtype)
+        i, j = self.indices
+        dense[i, j] = self.values
+        if self.symmetric:
+            dense[j, i] = self.values
+        return dense
+
+
+# ---------------------------------------------------------------------------
+# Sparse (COO) encoding helpers
+# ---------------------------------------------------------------------------
+
+def _as_3d(data: np.ndarray) -> np.ndarray:
+    return data[:, :, None] if data.ndim == 2 else data
+
+
+def radius_mask(distance_matrix: np.ndarray, cutoff: float) -> np.ndarray:
+    """Keep-mask for pairs within a distance cutoff (radius graph)."""
+    return distance_matrix <= cutoff
+
+
+def threshold_mask(data: np.ndarray, threshold: float) -> np.ndarray:
+    """Keep-mask where any channel's magnitude is >= threshold."""
+    d = _as_3d(data)
+    return np.any(np.abs(d) >= threshold, axis=2)
+
+
+def nonzero_mask(data: np.ndarray, fill_value: float = 0.0) -> np.ndarray:
+    """Keep-mask where any channel differs from fill_value."""
+    d = _as_3d(data)
+    return np.any(d != fill_value, axis=2)
+
+
+def sparsify(
+    data: np.ndarray,
+    keep_mask: np.ndarray,
+    *,
+    symmetric: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Encode a dense [N,N] or [N,N,C] array to COO (indices, values).
+
+    For symmetric features only upper-triangle (i <= j) entries are kept.
+    Returns indices [2, nnz] int32 and values [nnz, C] (C from data).
+    """
+    d = _as_3d(data)
+    n = d.shape[0]
+    mask = keep_mask
+    if symmetric:
+        mask = mask & np.triu(np.ones((n, n), dtype=bool))
+    rows, cols = np.nonzero(mask)
+    indices = np.stack([rows, cols]).astype(np.int32)
+    values = d[rows, cols]
+    return indices, values
+
+
 # ---------------------------------------------------------------------------
 # Computation helpers
 # ---------------------------------------------------------------------------

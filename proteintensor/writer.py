@@ -322,6 +322,135 @@ def compute_and_store_contacts(
     )
 
 
+def add_pair_feature_sparse(
+    path: str | Path,
+    data: np.ndarray,
+    name: str,
+    *,
+    keep_mask: np.ndarray | None = None,
+    mode: str = "radius",
+    cutoff: float | None = None,
+    threshold: float | None = None,
+    reference_distance: np.ndarray | None = None,
+    symmetric: bool = False,
+    dtype: str = "float32",
+    fill_value: float = 0.0,
+    description: str = "",
+    compression: str = "blosc",
+    overwrite: bool = False,
+) -> int:
+    """Store a pairwise feature in sparse COO form under pairs_sparse/<name>/.
+
+    Only kept entries are written; everything else is implicitly ``fill_value``.
+    Symmetric features store the upper triangle only. Returns the entry count.
+
+    Sparsification (choose one):
+      keep_mask   explicit [N,N] bool mask               -> mode "mask"
+      mode="radius"    keep where a distance <= cutoff   (reference_distance, or data itself if 2D)
+      mode="threshold" keep where |value| >= threshold
+      mode="nonzero"   keep where any channel != fill_value
+    """
+    from .pairs import sparsify, radius_mask, threshold_mask, nonzero_mask
+
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"{path} does not exist.")
+
+    n = data.shape[0]
+    if keep_mask is not None:
+        mask, mode, cut = keep_mask, "mask", float("nan")
+    elif mode == "radius":
+        if cutoff is None:
+            raise ValueError("mode='radius' requires cutoff=")
+        ref = reference_distance if reference_distance is not None else (
+            data if data.ndim == 2 else data[:, :, 0])
+        mask, cut = radius_mask(ref, cutoff), float(cutoff)
+    elif mode == "threshold":
+        if threshold is None:
+            raise ValueError("mode='threshold' requires threshold=")
+        mask, cut = threshold_mask(data, threshold), float(threshold)
+    elif mode == "nonzero":
+        mask, cut = nonzero_mask(data, fill_value), float("nan")
+    else:
+        raise ValueError(f"unknown mode {mode!r}")
+
+    indices, values = sparsify(data, mask, symmetric=symmetric)
+    C = int(values.shape[1])
+    nnz = int(indices.shape[1])
+
+    store = zarr.open(str(path), mode="r+")
+    root = store.require_group("pairs_sparse")
+    if name in root and not overwrite:
+        raise ValueError(f"Sparse pair feature '{name}' already exists in {path}. "
+                         "Pass overwrite=True to replace it.")
+
+    compressor = _compressor(compression)
+    grp = root.require_group(name)
+    grp.create_dataset("indices", data=indices, dtype="int32",
+                       chunks=(2, max(1, min(nnz, 1 << 16))),
+                       compressor=compressor, overwrite=True)
+    grp.create_dataset("values", data=values.astype(dtype), dtype=dtype,
+                       chunks=(max(1, min(nnz, 1 << 16)), C),
+                       compressor=compressor, overwrite=True)
+    grp.attrs.update({
+        "n_residues": int(n), "channels": C, "nnz": nnz,
+        "symmetric": bool(symmetric), "fill_value": float(fill_value),
+        "mode": mode, "cutoff": cut, "dtype": dtype,
+        "description": description, "created_at": time.time(),
+    })
+
+    existing = list(store.attrs.get("pair_features_sparse", []))
+    if name not in existing:
+        existing.append(name)
+    store.attrs["pair_features_sparse"] = existing
+    return nnz
+
+
+def compute_and_store_distances_sparse(
+    path: str | Path,
+    *,
+    cutoff: float = 20.0,
+    overwrite: bool = False,
+    compression: str = "blosc",
+) -> int:
+    """Compute Ca-Ca distances and store only pairs within ``cutoff`` (sparse)."""
+    from .pairs import compute_distance_matrix
+    path = Path(path)
+    store = zarr.open(str(path), mode="r")
+    if "backbone" not in store:
+        raise KeyError("No backbone group found. Re-convert with proteintensor>=0.2.")
+    dist = compute_distance_matrix(store["backbone/positions"][:])
+    return add_pair_feature_sparse(
+        path, dist, name="distance_matrix", mode="radius", cutoff=cutoff,
+        symmetric=True, dtype="float32", fill_value=0.0,
+        description=f"Ca-Ca distances within {cutoff} A (sparse radius graph)",
+        compression=compression, overwrite=overwrite,
+    )
+
+
+def compute_and_store_contacts_sparse(
+    path: str | Path,
+    *,
+    threshold: float = 8.0,
+    overwrite: bool = False,
+    compression: str = "blosc",
+) -> int:
+    """Compute a Ca-Ca contact graph and store contact pairs sparsely."""
+    from .pairs import compute_distance_matrix
+    path = Path(path)
+    store = zarr.open(str(path), mode="r")
+    if "backbone" not in store:
+        raise KeyError("No backbone group found. Re-convert with proteintensor>=0.2.")
+    dist = compute_distance_matrix(store["backbone/positions"][:])
+    # store only the contact pairs; values are all True
+    return add_pair_feature_sparse(
+        path, (dist < threshold).astype(bool)[:, :, None], name="contacts",
+        mode="nonzero", symmetric=True, dtype="bool", fill_value=0.0,
+        description=f"Ca-Ca contacts: distance < {threshold} A (sparse)",
+        compression=compression, overwrite=overwrite,
+    )
+
+
 def _arr(group: zarr.Group, name: str, data: np.ndarray, dtype: str, compressor) -> None:
     group.create_dataset(name, data=data.astype(dtype), compressor=compressor, overwrite=True)
 
