@@ -1,0 +1,44 @@
+{
+  "env": {
+    "timestamp_utc": "2026-07-09T18:34:05+00:00",
+    "gpu": "NVIDIA GeForce RTX 5080",
+    "torch": "2.11.0+cu128",
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26100-SP0",
+    "proteintensor": "0.4.0",
+    "samples": 6,
+    "batch": 2,
+    "dim": 256,
+    "msa_use_depth": 64,
+    "structures": [
+      "1UBQ",
+      "3HTB",
+      "6OIM",
+      "6LU7",
+      "5WT9",
+      "4HHB"
+    ],
+    "model": "MSA + structure transformer encoder; real forward + backward step"
+  },
+  "results": [
+    {
+      "depth": 2,
+      "params_m": 1.6,
+      "gpu_step_ms": 4.08,
+      "num_workers": 0,
+      "traditional": {
+        "throughput": 23.7,
+        "wait_fraction": 0.938,
+        "ttfb_ms": 31.9,
+        "epoch_s": 0.253
+      },
+      "ptt": {
+        "throughput": 99.2,
+        "wait_fraction": 0.733,
+        "ttfb_ms": 11.6,
+        "epoch_s": 0.061
+      },
+      "throughput_speedup": 4.15
+    }
+  ]
+}

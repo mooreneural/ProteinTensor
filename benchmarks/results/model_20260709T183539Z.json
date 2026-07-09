@@ -1,0 +1,139 @@
+{
+  "env": {
+    "timestamp_utc": "2026-07-09T18:35:39+00:00",
+    "gpu": "NVIDIA GeForce RTX 5080",
+    "torch": "2.11.0+cu128",
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26100-SP0",
+    "proteintensor": "0.4.0",
+    "samples": 48,
+    "batch": 4,
+    "dim": 256,
+    "msa_use_depth": 64,
+    "structures": [
+      "1UBQ",
+      "3HTB",
+      "6OIM",
+      "6LU7",
+      "5WT9",
+      "4HHB"
+    ],
+    "model": "MSA + structure transformer encoder; real forward + backward step"
+  },
+  "results": [
+    {
+      "depth": 2,
+      "params_m": 1.6,
+      "gpu_step_ms": 5.35,
+      "num_workers": 0,
+      "traditional": {
+        "throughput": 23.6,
+        "wait_fraction": 0.963,
+        "ttfb_ms": 115.8,
+        "epoch_s": 2.033
+      },
+      "ptt": {
+        "throughput": 111.8,
+        "wait_fraction": 0.83,
+        "ttfb_ms": 25.2,
+        "epoch_s": 0.429
+      },
+      "throughput_speedup": 4.74
+    },
+    {
+      "depth": 2,
+      "params_m": 1.6,
+      "gpu_step_ms": 5.35,
+      "num_workers": 4,
+      "traditional": {
+        "throughput": 78.9,
+        "wait_fraction": 0.871,
+        "ttfb_ms": 2323.7,
+        "epoch_s": 0.609
+      },
+      "ptt": {
+        "throughput": 263.1,
+        "wait_fraction": 0.578,
+        "ttfb_ms": 2120.7,
+        "epoch_s": 0.182
+      },
+      "throughput_speedup": 3.35
+    },
+    {
+      "depth": 6,
+      "params_m": 4.8,
+      "gpu_step_ms": 11.35,
+      "num_workers": 0,
+      "traditional": {
+        "throughput": 23.8,
+        "wait_fraction": 0.92,
+        "ttfb_ms": 89.7,
+        "epoch_s": 2.017
+      },
+      "ptt": {
+        "throughput": 92.6,
+        "wait_fraction": 0.679,
+        "ttfb_ms": 26.5,
+        "epoch_s": 0.518
+      },
+      "throughput_speedup": 3.89
+    },
+    {
+      "depth": 6,
+      "params_m": 4.8,
+      "gpu_step_ms": 11.35,
+      "num_workers": 4,
+      "traditional": {
+        "throughput": 77.4,
+        "wait_fraction": 0.732,
+        "ttfb_ms": 2226.1,
+        "epoch_s": 0.62
+      },
+      "ptt": {
+        "throughput": 191.1,
+        "wait_fraction": 0.346,
+        "ttfb_ms": 2155.2,
+        "epoch_s": 0.251
+      },
+      "throughput_speedup": 2.47
+    },
+    {
+      "depth": 12,
+      "params_m": 9.5,
+      "gpu_step_ms": 21.11,
+      "num_workers": 0,
+      "traditional": {
+        "throughput": 22.0,
+        "wait_fraction": 0.867,
+        "ttfb_ms": 97.1,
+        "epoch_s": 2.184
+      },
+      "ptt": {
+        "throughput": 67.6,
+        "wait_fraction": 0.562,
+        "ttfb_ms": 24.8,
+        "epoch_s": 0.71
+      },
+      "throughput_speedup": 3.08
+    },
+    {
+      "depth": 12,
+      "params_m": 9.5,
+      "gpu_step_ms": 21.11,
+      "num_workers": 4,
+      "traditional": {
+        "throughput": 68.3,
+        "wait_fraction": 0.56,
+        "ttfb_ms": 2265.9,
+        "epoch_s": 0.703
+      },
+      "ptt": {
+        "throughput": 111.3,
+        "wait_fraction": 0.246,
+        "ttfb_ms": 2253.4,
+        "epoch_s": 0.431
+      },
+      "throughput_speedup": 1.63
+    }
+  ]
+}

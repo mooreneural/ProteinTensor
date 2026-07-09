@@ -113,7 +113,8 @@ def collate(samples):
         md = min(d, s["msa"].shape[0])
         msa[i, :md, :n] = s["msa"][:md]
         dist[i, :n, :n] = s["dist"]
-    return {"seq": seq, "bb": bb, "msa": msa, "dist": dist}
+    n_res = np.array([s["seq"].shape[0] for s in samples], dtype=np.int32)
+    return {"seq": seq, "bb": bb, "msa": msa, "dist": dist, "n_res": n_res}
 
 
 # --------------------------------------------------------------------------
