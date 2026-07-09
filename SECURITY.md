@@ -19,7 +19,7 @@ before reporting an issue.
 
 Instead, report them privately by one of:
 
-- Email: **claytonwaynemoore@gmail.com** with the subject
+- Email: **clayton@tamu.edu** with the subject
   "ProteinTensor Security".
 - GitHub's private [security advisory](https://github.com/mooreneural/ProteinTensor/security/advisories/new)
   form ("Report a vulnerability").
