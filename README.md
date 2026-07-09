@@ -316,9 +316,10 @@ and the multi-structure DataLoader - is in **[docs/API.md](docs/API.md)**.
 structure.ptt/                      Zarr directory store (v0.7)
 ├── .zattrs                         format, version, pdb_id, resolution, ...
 ├── sequence/
-│   ├── tokens             [N_res]           int32    AA vocab indices (0-20)
+│   ├── tokens             [N_res]           int32    0-20=amino acid, 21-29=nucleotide
 │   ├── residue_index      [N_res]           int32    PDB sequence numbers
-│   └── chain_id           [N_res]           S1       chain labels
+│   ├── chain_id           [N_res]           S1       chain labels
+│   └── molecule_type      [N_res]           uint8    0=protein 1=DNA 2=RNA (only if nucleic)
 ├── atoms/
 │   ├── positions          [N_atoms, 3]      float32  Angstrom coordinates
 │   ├── mask               [N_atoms]         bool
@@ -353,12 +354,20 @@ structure.ptt/                      Zarr directory store (v0.7)
 │   └── <model>/                             one sub-group per PLM model
 │       ├── .zattrs                          model, layer, dim, dtype, seq SHA-256
 │       └── data           [N_res, D]        float32 or float16, chunked 256xD
-└── ligands/
-    └── <index>/                            one sub-group per non-polymer ligand
-        ├── .zattrs                          name (CCD), chain_id, res_num, smiles
-        ├── elements       [N_atoms]         S2       element symbols
-        ├── positions      [N_atoms, 3]      float32  Angstrom coordinates
-        └── b_factors      [N_atoms]         float32
+├── ligands/
+│   └── <index>/                            one sub-group per non-polymer ligand
+│       ├── .zattrs                          name (CCD), chain_id, res_num, smiles, has_bonds
+│       ├── elements           [N_atoms]     S2       element symbols
+│       ├── positions          [N_atoms, 3]  float32  Angstrom coordinates
+│       ├── b_factors          [N_atoms]     float32
+│       ├── bond_index         [2, N_bonds]  int32    exact bond graph (from_smiles / RDKit)
+│       ├── bond_order         [N_bonds]     uint8    1=SINGLE 2=DOUBLE 3=TRIPLE 4=AROMATIC
+│       ├── formal_charge      [N_atoms]     int8
+│       ├── is_aromatic        [N_atoms]     bool
+│       ├── interaction_edges  [2, N_int]    int32    (ligand_atom, residue) contacts
+│       └── interaction_dist   [N_int]       float32  contact distance (Angstroms)
+└── pocket/
+    └── binding_site           [N_res]       bool     residues within cutoff of any ligand
 ```
 
 ### Multi-structure dataset layout

@@ -2,7 +2,10 @@ from __future__ import annotations
 import numpy as np
 from pathlib import Path
 
-from ..schema import ProteinTensorData, AA_VOCAB, AA_UNK, BACKBONE_ATOMS, N_BACKBONE
+from ..schema import (
+    ProteinTensorData, AA_VOCAB, AA_UNK, BACKBONE_ATOMS, N_BACKBONE,
+    NUC_VOCAB, NUC_UNK, MOL_PROTEIN, MOL_DNA, MOL_RNA, DNA_RESIDUES,
+)
 from ..bonds import build as build_bonds
 
 
@@ -55,6 +58,7 @@ def _extract(structure, pdb_id: str) -> ProteinTensorData:
     res_indices: list[int]   = []
     chain_ids: list[bytes]   = []
     resnames: list[str]      = []
+    mol_types: list[int]     = []
     positions: list[list]    = []
     masks: list[bool]        = []
     bfactors: list[float]    = []
@@ -79,22 +83,30 @@ def _extract(structure, pdb_id: str) -> ProteinTensorData:
     model = structure[0]  # first model only
     for chain in model:
         polymer = chain.get_polymer()
-        if polymer.check_polymer_type() not in (
-            gemmi.PolymerType.PeptideL,
-            gemmi.PolymerType.PeptideD,
-        ):
-            continue  # skip DNA, RNA, unknown
+        ptype = polymer.check_polymer_type()
+        if ptype in (gemmi.PolymerType.PeptideL, gemmi.PolymerType.PeptideD):
+            chain_kind = MOL_PROTEIN
+        elif ptype in (gemmi.PolymerType.Dna, gemmi.PolymerType.Rna,
+                       gemmi.PolymerType.DnaRnaHybrid):
+            chain_kind = MOL_DNA   # refined per-residue below
+        else:
+            continue  # skip saccharides / unknown polymers
 
         chain_label = (chain.name[0] if chain.name else "A").encode()
 
         for residue in polymer:
             resname = residue.name.upper()
-            token = AA_VOCAB.get(resname, AA_UNK)
+            if chain_kind == MOL_PROTEIN:
+                token, mtype = AA_VOCAB.get(resname, AA_UNK), MOL_PROTEIN
+            else:
+                token = NUC_VOCAB.get(resname, NUC_UNK)
+                mtype = MOL_DNA if resname in DNA_RESIDUES else MOL_RNA
 
             seq_tokens.append(token)
             res_indices.append(int(residue.seqid.num))
             chain_ids.append(chain_label)
             resnames.append(resname)
+            mol_types.append(mtype)
 
             # All-atom ragged storage + atom-name -> global-index map
             atom_name_map: dict[str, int] = {}
@@ -131,10 +143,14 @@ def _extract(structure, pdb_id: str) -> ProteinTensorData:
     pos_arr = np.array(positions, dtype=np.float32).reshape(-1, 3)
     edge_index, edge_type = build_bonds(res_atom_maps, resnames, chain_ids, pos_arr)
 
+    has_nucleic = any(m != MOL_PROTEIN for m in mol_types)
+    mol_type_arr = np.array(mol_types, dtype=np.uint8) if has_nucleic else None
+
     return ProteinTensorData(
         sequence_tokens=np.array(seq_tokens,  dtype=np.int32),
         residue_index=np.array(res_indices,   dtype=np.int32),
         chain_id=np.array(chain_ids,          dtype="S1"),
+        molecule_type=mol_type_arr,
         atom_positions=pos_arr,
         atom_mask=np.array(masks,             dtype=bool),
         b_factors=np.array(bfactors,          dtype=np.float32),

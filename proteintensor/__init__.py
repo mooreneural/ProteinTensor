@@ -26,6 +26,10 @@ from .schema import (
     BondData,
     AA_VOCAB,
     AA_VOCAB_SIZE,
+    NUC_VOCAB,
+    MOL_PROTEIN,
+    MOL_DNA,
+    MOL_RNA,
     BACKBONE_ATOMS,
     N_BACKBONE,
     FORMAT_VERSION,
@@ -83,7 +87,8 @@ __all__ = [
     # Adapters
     "BoltzAdapter", "AlphaFold3Adapter", "ChaiAdapter", "OpenFoldAdapter",
     # Schema constants
-    "AA_VOCAB", "AA_VOCAB_SIZE", "BACKBONE_ATOMS", "N_BACKBONE", "FORMAT_VERSION",
+    "AA_VOCAB", "AA_VOCAB_SIZE", "NUC_VOCAB", "MOL_PROTEIN", "MOL_DNA", "MOL_RNA",
+    "BACKBONE_ATOMS", "N_BACKBONE", "FORMAT_VERSION",
     # Bond constants
     "BOND_SINGLE", "BOND_DOUBLE", "BOND_TRIPLE",
     "BOND_AROMATIC", "BOND_PEPTIDE", "BOND_DISULFIDE", "BOND_TYPE_NAMES",

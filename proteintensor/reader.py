@@ -32,10 +32,12 @@ def read(
     bond_edge_idx  = store["bonds/edge_index"][:]   if "bonds"    in store else None
     bond_edge_type = store["bonds/edge_type"][:]    if "bonds"    in store else None
 
+    has_moltype = "molecule_type" in store["sequence"]
     return ProteinTensorData(
         sequence_tokens=store["sequence/tokens"][:],
         residue_index=store["sequence/residue_index"][:],
         chain_id=store["sequence/chain_id"][:],
+        molecule_type=store["sequence/molecule_type"][:] if has_moltype else None,
         atom_positions=store["atoms/positions"][:]  if has_atoms  else None,
         atom_mask=store["atoms/mask"][:]            if has_atoms  else None,
         b_factors=store["atoms/b_factors"][:]       if has_atoms  else None,

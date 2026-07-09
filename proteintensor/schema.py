@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import numpy as np
 
-FORMAT_VERSION = "0.7"
+FORMAT_VERSION = "0.8"
 
 AA_VOCAB: dict[str, int] = {
     "ALA": 0, "ARG": 1, "ASN": 2, "ASP": 3, "CYS": 4,
@@ -13,6 +13,21 @@ AA_VOCAB: dict[str, int] = {
 }
 AA_UNK = 20
 AA_VOCAB_SIZE = 21
+
+# Nucleotide tokens extend the sequence token space past the 21 amino-acid tokens,
+# so a single sequence_tokens array can hold protein and nucleic-acid residues.
+NUC_VOCAB: dict[str, int] = {
+    "DA": 21, "DC": 22, "DG": 23, "DT": 24,   # DNA
+    "A": 25, "C": 26, "G": 27, "U": 28,        # RNA
+}
+NUC_UNK = 29
+SEQ_VOCAB_SIZE = 30
+
+# Per-residue molecule type (stored in molecule_type when nucleic acids are present)
+MOL_PROTEIN = 0
+MOL_DNA = 1
+MOL_RNA = 2
+DNA_RESIDUES = {"DA", "DC", "DG", "DT"}
 
 # Single-letter codes indexed by token: position i is the 1-letter code for token i.
 # Tokens 0-19 are the standard amino acids in AA_VOCAB order; token 20 (UNK) -> "X".
@@ -96,9 +111,11 @@ class LigandData:
 @dataclass
 class ProteinTensorData:
     # Sequence-level - shape [N_res]
-    sequence_tokens: np.ndarray      # int32   residue vocab indices
+    sequence_tokens: np.ndarray      # int32   residue vocab indices (AA 0-20, nucleotide 21-29)
     residue_index: np.ndarray        # int32   PDB sequence numbers
     chain_id: np.ndarray             # S1      single-char chain labels
+    # Per-residue molecule type (0=protein, 1=DNA, 2=RNA); None for protein-only entries
+    molecule_type: np.ndarray | None = None   # uint8 [N_res]
 
     # Atom-level - shapes [N_atoms] or [N_atoms, 3].
     # None for sequence-only entries (from_sequence / from_fasta) that carry no structure.

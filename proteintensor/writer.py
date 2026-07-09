@@ -30,6 +30,9 @@ def write(data: ProteinTensorData, path: str | Path, compression: str = "blosc")
     _arr(seq, "tokens",        data.sequence_tokens,    "int32",   compressor)
     _arr(seq, "residue_index", data.residue_index,      "int32",   compressor)
     _arr(seq, "chain_id",      data.chain_id,           "S1",      compressor)
+    if data.molecule_type is not None:
+        _arr(seq, "molecule_type", data.molecule_type,  "uint8",   compressor)
+        store.attrs["has_nucleic"] = True
 
     # Atom-level and residue->atom mapping are omitted for sequence-only entries.
     if data.has_structure:
