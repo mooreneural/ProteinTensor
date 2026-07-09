@@ -107,12 +107,29 @@ def from_smiles(smiles: str, name: str = "LIG", *, seed: int = 42) -> LigandData
          for i in range(mol.GetNumAtoms())],
         dtype=np.float32,
     )
+
+    # Exact bond graph + atom chemistry from RDKit (bidirectional edges).
+    _ORDER = {Chem.BondType.SINGLE: 1, Chem.BondType.DOUBLE: 2, Chem.BondType.TRIPLE: 3}
+    bi, bj, orders = [], [], []
+    for b in mol.GetBonds():
+        a, z = b.GetBeginAtomIdx(), b.GetEndAtomIdx()
+        o = 4 if b.GetIsAromatic() else _ORDER.get(b.GetBondType(), 1)
+        bi += [a, z]; bj += [z, a]; orders += [o, o]
+    bond_index = np.array([bi, bj], dtype=np.int32) if bi else np.zeros((2, 0), np.int32)
+    bond_order = np.array(orders, dtype=np.uint8)
+    formal_charge = np.array([a.GetFormalCharge() for a in mol.GetAtoms()], dtype=np.int8)
+    is_aromatic = np.array([a.GetIsAromatic() for a in mol.GetAtoms()], dtype=bool)
+
     return LigandData(
         name=name,
         elements=elements,
         positions=positions,
         b_factors=np.zeros(len(elements), dtype=np.float32),
         smiles=canonical,
+        bond_index=bond_index,
+        bond_order=bond_order,
+        formal_charge=formal_charge,
+        is_aromatic=is_aromatic,
     )
 
 
@@ -120,27 +137,41 @@ def from_smiles(smiles: str, name: str = "LIG", *, seed: int = 42) -> LigandData
 # (De)serialization - used by writer.write() and reader.read()
 # ---------------------------------------------------------------------------
 
+def _write_ligand_group(grp: zarr.Group, lig: LigandData, compressor) -> None:
+    """Write one ligand's arrays + metadata into an (already created) group."""
+    grp.create_dataset("elements",  data=lig.elements,                  dtype="S2",
+                       compressor=compressor, overwrite=True)
+    grp.create_dataset("positions", data=lig.positions.astype("float32"),
+                       compressor=compressor, overwrite=True)
+    grp.create_dataset("b_factors", data=lig.b_factors.astype("float32"),
+                       compressor=compressor, overwrite=True)
+    if lig.bond_index is not None:
+        grp.create_dataset("bond_index", data=lig.bond_index.astype("int32"),
+                           dtype="int32", compressor=compressor, overwrite=True)
+        grp.create_dataset("bond_order", data=lig.bond_order.astype("uint8"),
+                           dtype="uint8", compressor=compressor, overwrite=True)
+    if lig.formal_charge is not None:
+        grp.create_dataset("formal_charge", data=lig.formal_charge.astype("int8"),
+                           dtype="int8", compressor=compressor, overwrite=True)
+    if lig.is_aromatic is not None:
+        grp.create_dataset("is_aromatic", data=lig.is_aromatic.astype(bool),
+                           dtype="bool", compressor=compressor, overwrite=True)
+    grp.attrs.update({
+        "name":      lig.name,
+        "chain_id":  lig.chain_id,
+        "res_num":   int(lig.res_num),
+        "smiles":    lig.smiles,
+        "num_atoms": int(lig.num_atoms),
+        "has_bonds": lig.bond_index is not None,
+    })
+
+
 def serialize_ligands(store: zarr.Group, ligands: list[LigandData], compressor) -> None:
     """Write a list of ligands under store['ligands/']."""
     root = store.require_group("ligands")
-    names: list[str] = []
     for i, lig in enumerate(ligands):
-        grp = root.require_group(f"{i:06d}")
-        grp.create_dataset("elements",  data=lig.elements,                  dtype="S2",
-                           compressor=compressor, overwrite=True)
-        grp.create_dataset("positions", data=lig.positions.astype("float32"),
-                           compressor=compressor, overwrite=True)
-        grp.create_dataset("b_factors", data=lig.b_factors.astype("float32"),
-                           compressor=compressor, overwrite=True)
-        grp.attrs.update({
-            "name":      lig.name,
-            "chain_id":  lig.chain_id,
-            "res_num":   int(lig.res_num),
-            "smiles":    lig.smiles,
-            "num_atoms": int(lig.num_atoms),
-        })
-        names.append(lig.name)
-    store.attrs["ligands"] = names
+        _write_ligand_group(root.require_group(f"{i:06d}"), lig, compressor)
+    store.attrs["ligands"] = [lig.name for lig in ligands]
     store.attrs["num_ligands"] = len(ligands)
 
 
@@ -161,6 +192,10 @@ def deserialize_ligands(grp: zarr.Group) -> list[LigandData]:
             chain_id=a.get("chain_id", ""),
             res_num=int(a.get("res_num", 0)),
             smiles=a.get("smiles", ""),
+            bond_index=g["bond_index"][:] if "bond_index" in g else None,
+            bond_order=g["bond_order"][:] if "bond_order" in g else None,
+            formal_charge=g["formal_charge"][:] if "formal_charge" in g else None,
+            is_aromatic=g["is_aromatic"][:] if "is_aromatic" in g else None,
         ))
     return out
 
@@ -192,25 +227,110 @@ def add_ligand(path: str | Path, ligand: LigandData, compression: str = "blosc")
     store = zarr.open(str(path), mode="r+")
     root = store.require_group("ligands")
     idx = len(list(root.keys()))
-    compressor = _compressor(compression)
-
-    grp = root.require_group(f"{idx:06d}")
-    grp.create_dataset("elements",  data=ligand.elements,                  dtype="S2",
-                       compressor=compressor, overwrite=True)
-    grp.create_dataset("positions", data=ligand.positions.astype("float32"),
-                       compressor=compressor, overwrite=True)
-    grp.create_dataset("b_factors", data=ligand.b_factors.astype("float32"),
-                       compressor=compressor, overwrite=True)
-    grp.attrs.update({
-        "name":      ligand.name,
-        "chain_id":  ligand.chain_id,
-        "res_num":   int(ligand.res_num),
-        "smiles":    ligand.smiles,
-        "num_atoms": int(ligand.num_atoms),
-    })
+    _write_ligand_group(root.require_group(f"{idx:06d}"), ligand, _compressor(compression))
 
     names = list(store.attrs.get("ligands", []))
     names.append(ligand.name)
     store.attrs["ligands"] = names
     store.attrs["num_ligands"] = len(names)
     return idx
+
+
+# ---------------------------------------------------------------------------
+# Pocket: protein-ligand interactions + binding-site residues
+# ---------------------------------------------------------------------------
+
+def compute_and_store_pocket(
+    path: str | Path,
+    *,
+    cutoff: float = 5.0,
+    compression: str = "blosc",
+) -> np.ndarray:
+    """Compute protein-ligand interactions and binding-site residues.
+
+    For every stored ligand, finds (ligand atom, protein residue) contacts within
+    ``cutoff`` Angstroms (all-atom), storing per-ligand interaction edges under
+    ``ligands/<i>/`` and a union binding-site residue mask under ``pocket/``.
+    Requires a .ptt with both protein structure and ligands. Returns the mask.
+    """
+    from .writer import _compressor
+
+    path = Path(path)
+    store = zarr.open(str(path), mode="r+")
+    if "ligands" not in store:
+        raise KeyError("No ligands in this .ptt.")
+    if "atoms" not in store or "structure" not in store:
+        raise KeyError("Pocket needs protein structure (atoms + residue mapping).")
+
+    prot = store["atoms/positions"][:]                      # [N_prot, 3]
+    res_start = store["structure/residue_atom_start"][:]
+    res_count = store["structure/residue_atom_count"][:]
+    n_res = int(res_start.shape[0])
+
+    atom_res = np.empty(prot.shape[0], dtype=np.int32)      # protein atom -> residue
+    for r in range(n_res):
+        atom_res[res_start[r]:res_start[r] + res_count[r]] = r
+
+    binding = np.zeros(n_res, dtype=bool)
+    compressor = _compressor(compression)
+    root = store["ligands"]
+    for key in sorted(root.keys()):
+        g = root[key]
+        lig = g["positions"][:]                             # [N_lig, 3]
+        d = np.sqrt(((lig[:, None, :] - prot[None, :, :]) ** 2).sum(-1))  # [N_lig, N_prot]
+        close = d < cutoff
+        binding[atom_res[close.any(axis=0)]] = True
+
+        li, pj = np.nonzero(close)
+        if li.size:
+            rj = atom_res[pj]
+            dij = d[li, pj]
+            keys = li.astype(np.int64) * n_res + rj
+            order = np.argsort(dij, kind="stable")          # min distance first
+            _, first = np.unique(keys[order], return_index=True)
+            sel = order[first]
+            edges = np.stack([li[sel], rj[sel]]).astype(np.int32)   # [2, N_edge]
+            edist = dij[sel].astype(np.float32)
+        else:
+            edges = np.zeros((2, 0), dtype=np.int32)
+            edist = np.zeros(0, dtype=np.float32)
+
+        g.create_dataset("interaction_edges", data=edges, dtype="int32",
+                         compressor=compressor, overwrite=True)
+        g.create_dataset("interaction_dist", data=edist, dtype="float32",
+                         compressor=compressor, overwrite=True)
+        g.attrs["interaction_cutoff"] = float(cutoff)
+
+    pocket = store.require_group("pocket")
+    pocket.create_dataset("binding_site", data=binding, dtype="bool",
+                          compressor=compressor, overwrite=True)
+    pocket.attrs["cutoff"] = float(cutoff)
+    pocket.attrs["num_binding_residues"] = int(binding.sum())
+    return binding
+
+
+def read_binding_site(path: str | Path, storage_options: dict | None = None) -> np.ndarray | None:
+    """Return the [N_res] bool binding-site mask, or None if not computed."""
+    store = open_store(path, storage_options=storage_options)
+    if "pocket" not in store:
+        return None
+    return store["pocket/binding_site"][:]
+
+
+def read_interactions(path: str | Path, storage_options: dict | None = None) -> list[dict]:
+    """Return per-ligand interaction edges: [{name, edges [2,N], dist [N]}, ...]."""
+    store = open_store(path, storage_options=storage_options)
+    if "ligands" not in store:
+        return []
+    out: list[dict] = []
+    root = store["ligands"]
+    for key in sorted(root.keys()):
+        g = root[key]
+        if "interaction_edges" not in g:
+            continue
+        out.append({
+            "name": g.attrs.get("name", ""),
+            "edges": g["interaction_edges"][:],   # [2, N]  (ligand_atom, residue_index)
+            "dist":  g["interaction_dist"][:],    # [N]     Angstroms
+        })
+    return out

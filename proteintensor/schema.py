@@ -76,9 +76,21 @@ class LigandData:
     res_num: int = 0          # source residue number
     smiles: str = ""          # canonical SMILES if known (never inferred from coords)
 
+    # Covalent bond graph + atom chemistry - populated when the chemistry is known
+    # exactly (e.g. from_smiles via RDKit); None for structure-only ligands where
+    # bonds would have to be guessed from coordinates.
+    bond_index:   np.ndarray | None = None  # int32 [2, N_bonds]  bidirectional (i, j)
+    bond_order:   np.ndarray | None = None  # uint8 [N_bonds]  1=SINGLE 2=DOUBLE 3=TRIPLE 4=AROMATIC
+    formal_charge: np.ndarray | None = None # int8  [N_atoms]
+    is_aromatic:  np.ndarray | None = None  # bool  [N_atoms]
+
     @property
     def num_atoms(self) -> int:
         return int(self.positions.shape[0])
+
+    @property
+    def has_bonds(self) -> bool:
+        return self.bond_index is not None
 
 
 @dataclass
