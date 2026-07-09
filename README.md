@@ -547,33 +547,3 @@ pytest tests/ -v
 embeddings/ligands, sequence conversion, A3M parsing, model input adapters (Boltz,
 AlphaFold 3, Chai-1, OpenFold), multi-structure dataset, and cloud streaming
 (memory:// fsspec - no real cloud account required).
-
----
-
-## Roadmap
-
-- [x] Backbone-only dense layout `[N_res, 4, 3]` for faster backbone access
-- [x] Bond graph storage (`edge_index`) - SINGLE / DOUBLE / AROMATIC / PEPTIDE / DISULFIDE
-- [x] MSA feature caching - A3M parser, provenance tracking, multi-source per file
-- [x] Pair representation block `[N, N, C]` - distance matrix, contact map, generic named tensors
-- [x] Pre-embedded ESM2 / ESM3 features - float16 storage, provenance hash, lazy mmap access
-- [x] Model adapters: Boltz2 - end-to-end prediction from `.ptt` verified on RTX 5080
-- [x] Multi-structure dataset container - one Zarr store, N structures, PyTorch DataLoader compatible
-- [x] Cloud streaming - S3 / GCS via `fsspec`, training directly from object storage
-
-**Model coverage**
-- [x] OpenFold / Chai-1 / AlphaFold 3 input adapters - `.ptt` -> native input files
-      (format-validated; end-to-end not verified - models not bundled)
-- [ ] End-to-end verification for OpenFold / Chai-1 / AlphaFold 3 (needs the models installed)
-
-**Data pipeline**
-- [x] Batch convert CLI - convert entire PDB directories in parallel with progress reporting
-- [ ] Sequence-identity dataset splitting - MMseqs2-based cluster splits to prevent data leakage between train / val / test
-
-**Format extensions**
-- [x] Ligand / small-molecule support - CCD-based extraction from structures, SMILES input via RDKit, element/coordinate storage (bond graphs and binding-site annotations still to come)
-- [ ] MD trajectory storage - time axis `[N_frames, N_atoms, 3]` for conformational ensembles and AlphaFold 3 diffusion trajectories
-
-**Performance**
-- [ ] Parallel DataLoader workers - thread-safe multi-worker prefetching verified under PyTorch DDP
-- [ ] Format version migration CLI - upgrade .ptt files in-place across version bumps
