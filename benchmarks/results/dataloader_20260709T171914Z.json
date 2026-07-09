@@ -1,0 +1,63 @@
+{
+  "env": {
+    "timestamp_utc": "2026-07-09T17:19:14+00:00",
+    "gpu": "NVIDIA GeForce RTX 5080",
+    "torch": "2.11.0+cu128",
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26100-SP0",
+    "proteintensor": "0.4.0",
+    "samples": 6,
+    "batch": 2,
+    "msa_use_depth": 64,
+    "structures": [
+      "1UBQ",
+      "3HTB",
+      "6OIM",
+      "6LU7",
+      "5WT9",
+      "4HHB"
+    ]
+  },
+  "gpu_step_ms": {
+    "0": 0.08,
+    "16": 2.63
+  },
+  "results": [
+    {
+      "num_workers": 0,
+      "k": 0,
+      "gpu_step_ms": 0.08,
+      "traditional": {
+        "throughput": 27.1,
+        "wait_fraction": 0.996,
+        "ttfb_ms": 38.3,
+        "epoch_s": 0.22
+      },
+      "ptt": {
+        "throughput": 7.0,
+        "wait_fraction": 0.999,
+        "ttfb_ms": 157.4,
+        "epoch_s": 0.86
+      },
+      "throughput_speedup": 0.26
+    },
+    {
+      "num_workers": 0,
+      "k": 16,
+      "gpu_step_ms": 2.63,
+      "traditional": {
+        "throughput": 26.8,
+        "wait_fraction": 0.961,
+        "ttfb_ms": 30.9,
+        "epoch_s": 0.22
+      },
+      "ptt": {
+        "throughput": 106.3,
+        "wait_fraction": 0.851,
+        "ttfb_ms": 12.9,
+        "epoch_s": 0.06
+      },
+      "throughput_speedup": 3.67
+    }
+  ]
+}
