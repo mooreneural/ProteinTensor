@@ -2,6 +2,9 @@
 
 **ProteinTensor** is an AI-native biomolecular storage format designed to eliminate
 the preprocessing bottleneck in modern structural biology machine learning pipelines.
+It converts a protein, nucleic-acid, or protein-ligand structure - or a raw sequence -
+once into a `.ptt` file, then loads every tensor a model needs (backbone, bonds, MSA,
+embeddings, dense/sparse pair features, ligand pockets) with zero parsing.
 
 ---
 
@@ -153,18 +156,25 @@ IgG1 antibody. Numbers are consistent with the structural biology benchmark abov
 | 2P4E - PCSK9 | 586 | 16x | 41x | 70x | 4x | 14x |
 | 1IGT - IgG1 antibody | 1,316 | 37x | **92x** | **156x** | 3x | 7x |
 
-### DataLoader batch throughput
+### DataLoader throughput (real model, end-to-end)
 
-Measured using `ProteinDataset` + `ProteinDataset.collate()`, loading structures into
-padded batches ready for `model.forward()`. Single process, no prefetch workers.
+The honest test - not a microbenchmark: a real PyTorch `DataLoader` feeding a small
+transformer (real forward + backward) on an RTX 5080, comparing `traditional` (parse
+mmCIF + A3M + compute distances per item) vs `.ptt` (zero-parse). `GPU idle` = fraction
+of wall-clock the GPU waits for data. Reproduce with `python benchmarks/model_harness.py`.
 
-| Batch size | ms / batch | Structures / sec |
-|---|---|---|
-| 1 | 0.01 ms | 97,088 |
-| 4 | 0.03 ms | 116,279 |
-| 8 | 0.42 ms | 19,242 |
-| 16 | 0.97 ms | 16,412 |
-| 32 | 2.1 ms | **15,033** |
+| Model step | workers | traditional /s | ptt /s | throughput | GPU idle (trad -> ptt) |
+|---|---|---|---|---|---|
+| 5.4 ms | 0 | 23.6 | 111.8 | **4.7x** | 96% -> 83% |
+| 5.4 ms | 4 | 78.9 | 263.1 | **3.4x** | 87% -> 58% |
+| 21.1 ms | 4 | 68.3 | 111.3 | **1.6x** | 56% -> 25% |
+
+`.ptt` wins most when the model step is cheap (data-bound); the throughput gap narrows
+as the model deepens, but the GPU-idle gap persists and `num_workers>0` speeds up both
+without erasing it. **Honest scope:** a small model on one GPU - production models
+(AlphaFold/Boltz) have far heavier steps, where the throughput speedup converges toward
+1x and the durable value is reclaimed GPU-idle time. See
+[`benchmarks/MODEL_HARNESS_RESULTS.md`](benchmarks/MODEL_HARNESS_RESULTS.md).
 
 ### Scale projection: 100,000 structures, one training epoch
 
@@ -427,7 +437,8 @@ MSA. ProteinTensor replaces that recurring work with a single zero-parse read:
 pytest tests/ -v
 ```
 
-166 tests across structure roundtrip, backbone/bonds/MSA/pairs (dense + sparse)/
-embeddings/ligands, sequence conversion, A3M parsing, model input adapters (Boltz,
-AlphaFold 3, Chai-1, OpenFold), multi-structure dataset, and cloud streaming
-(memory:// fsspec - no real cloud account required).
+176 tests across structure roundtrip, nucleic-acid (DNA/RNA) support, backbone/bonds/
+MSA/pairs (dense + sparse)/embeddings/ligands (bond graphs, pockets, binding sites),
+sequence conversion, A3M parsing, model input adapters (Boltz, AlphaFold 3, Chai-1,
+OpenFold), multi-structure dataset, and cloud streaming (memory:// fsspec - no real
+cloud account required).

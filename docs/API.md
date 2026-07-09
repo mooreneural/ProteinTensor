@@ -88,13 +88,33 @@ data = pt.from_mmcif("6oim.cif", include_ligands=True)
 [l.name for l in data.ligands]        # ['MG', 'GDP', 'MOV']  (MOV = sotorasib)
 
 ligs = pt.read_ligands("6oim.ptt")
-ligs[0].elements                      # (N_atoms,)  S2  element symbols
-ligs[0].positions                     # (N_atoms, 3)  float32
+lig = ligs[0]
+lig.elements                          # (N_atoms,)  S2  element symbols
+lig.positions                         # (N_atoms, 3)  float32
+lig.bond_index                        # (2, N_bonds)  int32   ligand bond graph
+lig.bond_order                        # (N_bonds,)    uint8   1/2/3/aromatic
+lig.formal_charge, lig.is_aromatic    # per-atom (N_atoms,)
 pt.list_ligands("6oim.ptt")           # ['MG', 'GDP', 'MOV']
 
 # Build a ligand from SMILES (needs `pip install "proteintensor[ligands]"`)
 aspirin = pt.from_smiles("CC(=O)Oc1ccccc1C(=O)O", name="AIN")
 pt.add_ligand("target.ptt", aspirin)  # attach to an existing .ptt
+
+# ------ Binding pocket (protein-ligand interface) ------
+pt.compute_and_store_pocket("6oim.ptt", cutoff=5.0)   # residues near any ligand
+site = pt.read_binding_site("6oim.ptt")               # bool [N_res]  True = pocket residue
+inter = pt.read_interactions("6oim.ptt")              # [{ligand_atom, residue, distance}, ...]
+```
+
+## Nucleic acids
+
+DNA and RNA chains are parsed alongside protein chains (mixed complexes supported).
+Nucleotide tokens occupy vocab indices 21-29, and a per-residue `molecule_type`
+array (0=protein, 1=DNA, 2=RNA) is stored when any non-protein polymer is present.
+
+```python
+data = pt.read("dna_protein_complex.ptt")
+data.molecule_type    # (N_res,)  uint8  0=protein 1=DNA 2=RNA  (None if all protein)
 ```
 
 ## Lazy / zero-copy access
