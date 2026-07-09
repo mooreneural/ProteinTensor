@@ -17,6 +17,9 @@ from .pairs import (
 )
 from .embeddings import EmbeddingData, KNOWN_DIMS, sequence_hash as embedding_sequence_hash
 from .adapters.boltz import BoltzAdapter
+from .adapters.alphafold3 import AlphaFold3Adapter
+from .adapters.chai import ChaiAdapter
+from .adapters.openfold import OpenFoldAdapter
 from .schema import (
     ProteinTensorData,
     BackboneData,
@@ -74,7 +77,7 @@ __all__ = [
     # Embedding utilities
     "KNOWN_DIMS", "embedding_sequence_hash",
     # Adapters
-    "BoltzAdapter",
+    "BoltzAdapter", "AlphaFold3Adapter", "ChaiAdapter", "OpenFoldAdapter",
     # Schema constants
     "AA_VOCAB", "AA_VOCAB_SIZE", "BACKBONE_ATOMS", "N_BACKBONE", "FORMAT_VERSION",
     # Bond constants
