@@ -503,15 +503,27 @@ Each sub-group under `structures/` is identical to a standalone `.ptt` root, so 
 
 ---
 
-## Supported models
+## Model adapters
 
-| Model | Adapter | Status |
+Only **Boltz** has a working, verified adapter today. The others are on the roadmap:
+the `.ptt` format already stores the tensors they consume (sequence, MSA,
+templates/pairs, embeddings, ligands), but their adapters are not built yet.
+
+| Model | Native input (per run) | `.ptt` adapter |
 |---|---|---|
-| Boltz 2 | `BoltzAdapter` | Verified - end-to-end prediction on RTX 5080 |
-| Boltz 1 | `BoltzAdapter(model="boltz1")` | Supported |
-| OpenFold | - | Planned |
-| RoseTTAFold-All-Atom | - | Planned |
-| Chai-1 | - | Planned |
+| Boltz-2 / Boltz-1 | FASTA + optional A3M MSA | `BoltzAdapter` - verified end-to-end on RTX 5080 |
+| OpenFold | FASTA + A3M MSA; trains on mmCIF | planned |
+| Chai-1 | FASTA + optional MSA / templates / restraints | planned |
+| AlphaFold 3 | JSON (sequences, ligands) + generated MSA | planned |
+
+Every one of these re-derives the same features before each run - parse the
+structure (mmCIF / PDB), tokenize the sequence (FASTA), and generate or parse the
+MSA. ProteinTensor replaces that recurring work with a single zero-parse read:
+
+| Input path | Structure | Sequence + MSA | Cost per run |
+|---|---|---|---|
+| Native (mmCIF/PDB + FASTA + MSA files) | parse mmCIF/PDB text | parse FASTA + generate/parse MSA | re-parsed and re-featurized every epoch |
+| ProteinTensor (`.ptt`) | zero-parse read | zero-parse read (lazy, partial) | converted once, then loaded |
 
 ---
 
@@ -540,8 +552,8 @@ streaming (memory:// fsspec - no real cloud account required).
 
 **Model coverage**
 - [ ] OpenFold adapter
-- [ ] RoseTTAFold-All-Atom adapter
 - [ ] Chai-1 adapter
+- [ ] AlphaFold 3 adapter
 
 **Data pipeline**
 - [x] Batch convert CLI - convert entire PDB directories in parallel with progress reporting
