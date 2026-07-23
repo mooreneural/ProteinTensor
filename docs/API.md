@@ -104,6 +104,13 @@ pt.add_ligand("target.ptt", aspirin)  # attach to an existing .ptt
 pt.compute_and_store_pocket("6oim.ptt", cutoff=5.0)   # residues near any ligand
 site = pt.read_binding_site("6oim.ptt")               # bool [N_res]  True = pocket residue
 inter = pt.read_interactions("6oim.ptt")              # [{ligand_atom, residue, distance}, ...]
+
+# ------ Resolve CCD codes to SMILES ------
+# Structure-extracted ligands store elements + coords but no SMILES. Backfill
+# canonical SMILES from the RCSB Chemical Component Dictionary (fetched + cached,
+# never guessed) so they flow into the Chai / AF3 / Nesso adapters.
+pt.resolve_ligand_smiles("6oim.ptt")                  # MG, GDP, MOV -> SMILES
+pt.ccd_to_smiles("GDP")                               # one code -> canonical SMILES
 ```
 
 ## Nucleic acids

@@ -47,8 +47,9 @@ from .bonds import (
 from .dataset import ProteinDataset, create_dataset, add_to_dataset
 from .remote import consolidate
 from .converters import from_mmcif, from_sequence, from_fasta, parse_fasta
+from .ccd import ccd_to_smiles
 from .ligands import (
-    read_ligands, list_ligands, add_ligand, from_smiles,
+    read_ligands, list_ligands, add_ligand, from_smiles, resolve_ligand_smiles,
     compute_and_store_pocket, read_binding_site, read_interactions,
 )
 from .schema import LigandData
@@ -75,6 +76,7 @@ __all__ = [
     "read_embedding", "add_embedding", "list_embeddings", "mmap_embedding",
     # Ligands / small molecules
     "read_ligands", "list_ligands", "add_ligand", "from_smiles", "LigandData",
+    "resolve_ligand_smiles", "ccd_to_smiles",
     "compute_and_store_pocket", "read_binding_site", "read_interactions",
     # Data containers
     "ProteinTensorData", "BackboneData", "BondData", "MsaData", "PairFeature", "EmbeddingData",

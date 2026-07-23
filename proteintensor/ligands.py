@@ -236,6 +236,41 @@ def add_ligand(path: str | Path, ligand: LigandData, compression: str = "blosc")
     return idx
 
 
+def resolve_ligand_smiles(
+    path: str | Path,
+    *,
+    allow_network: bool = True,
+    cache_dir: str | None = None,
+) -> int:
+    """Fill in SMILES for stored ligands that lack one, from their CCD code.
+
+    Structure-extracted (CCD) ligands store elements + coordinates but no SMILES,
+    so they don't flow into ligand-consuming adapters (Chai / AF3 / Nesso). This
+    resolves each ligand's 3-letter code to canonical SMILES via the RCSB
+    Chemical Component Dictionary (cached), writing it back to the `.ptt`.
+
+    Requires network on first lookup of a code (opt-in). Returns the number of
+    ligands newly resolved. SMILES are never guessed - only fetched from RCSB.
+    """
+    from .ccd import ccd_to_smiles
+
+    path = Path(path)
+    store = zarr.open(str(path), mode="r+")
+    if "ligands" not in store:
+        return 0
+    resolved = 0
+    for key in sorted(store["ligands"].keys()):
+        grp = store[f"ligands/{key}"]
+        if grp.attrs.get("smiles"):
+            continue
+        code = str(grp.attrs.get("name", "")).strip()
+        smi = ccd_to_smiles(code, allow_network=allow_network, cache_dir=cache_dir)
+        if smi:
+            grp.attrs["smiles"] = smi
+            resolved += 1
+    return resolved
+
+
 # ---------------------------------------------------------------------------
 # Pocket: protein-ligand interactions + binding-site residues
 # ---------------------------------------------------------------------------

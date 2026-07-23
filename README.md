@@ -422,10 +422,16 @@ OpenFoldAdapter("1abc.ptt").write_input("openfold/")         # FASTA + alignment
 NessoAdapter("6oim.ptt").write_input("nesso/6oim.yaml")      # Nesso YAML (+ affinity)
 ```
 
-Ligands appear in the Chai / AF3 / Nesso inputs only when they carry a SMILES
-string (e.g. added via `pt.from_smiles`). Ligands extracted from a structure
-(CCD codes) currently store elements and coordinates but not SMILES, so add a
-SMILES ligand explicitly for affinity-style predictions.
+Ligands need a SMILES string to appear in the Chai / AF3 / Nesso inputs. Ligands
+added via `pt.from_smiles` already carry one; ligands extracted from a structure
+(CCD codes) store elements + coordinates only, so call `pt.resolve_ligand_smiles`
+once to backfill canonical SMILES from the RCSB Chemical Component Dictionary
+(fetched and cached, never guessed):
+
+```python
+pt.resolve_ligand_smiles("6oim.ptt")            # MG, GDP, MOV (sotorasib) -> SMILES
+NessoAdapter("6oim.ptt").write_input("nesso/6oim.yaml")   # now includes the ligands
+```
 
 Every one of these re-derives the same features before each run - parse the
 structure (mmCIF / PDB), tokenize the sequence (FASTA), and generate or parse the
@@ -444,7 +450,7 @@ MSA. ProteinTensor replaces that recurring work with a single zero-parse read:
 pytest tests/ -v
 ```
 
-182 tests across structure roundtrip, nucleic-acid (DNA/RNA) support, backbone/bonds/
+190 tests across structure roundtrip, nucleic-acid (DNA/RNA) support, backbone/bonds/
 MSA/pairs (dense + sparse)/embeddings/ligands (bond graphs, pockets, binding sites),
 sequence conversion, A3M parsing, model input adapters (Boltz, AlphaFold 3, Chai-1,
 OpenFold, Nesso), multi-structure dataset, and cloud streaming (memory:// fsspec -
