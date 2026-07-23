@@ -20,6 +20,7 @@ from .adapters.boltz import BoltzAdapter
 from .adapters.alphafold3 import AlphaFold3Adapter
 from .adapters.chai import ChaiAdapter
 from .adapters.openfold import OpenFoldAdapter
+from .adapters.nesso import NessoAdapter
 from .schema import (
     ProteinTensorData,
     BackboneData,
@@ -86,6 +87,7 @@ __all__ = [
     "KNOWN_DIMS", "embedding_sequence_hash",
     # Adapters
     "BoltzAdapter", "AlphaFold3Adapter", "ChaiAdapter", "OpenFoldAdapter",
+    "NessoAdapter",
     # Schema constants
     "AA_VOCAB", "AA_VOCAB_SIZE", "NUC_VOCAB", "MOL_PROTEIN", "MOL_DNA", "MOL_RNA",
     "BACKBONE_ATOMS", "N_BACKBONE", "FORMAT_VERSION",

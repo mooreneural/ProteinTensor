@@ -399,11 +399,11 @@ Each sub-group under `structures/` is identical to a standalone `.ptt` root, so 
 
 ## Model adapters
 
-**Boltz** runs end-to-end from a `.ptt`. The **OpenFold**, **Chai-1**, and
-**AlphaFold 3** adapters convert a `.ptt` into each model's native input files
-(`write_input`) - validated against each format, with any cached MSA embedded so
-the model can skip regeneration. Those models are not bundled, so end-to-end
-prediction through them is not verified here.
+**Boltz** runs end-to-end from a `.ptt`. The **OpenFold**, **Chai-1**,
+**AlphaFold 3**, and **Nesso** adapters convert a `.ptt` into each model's native
+input files (`write_input`) - validated against each format, with any cached MSA
+embedded so the model can skip regeneration. Those models are not bundled, so
+end-to-end prediction through them is not verified here.
 
 | Model | Native input (per run) | `.ptt` adapter |
 |---|---|---|
@@ -411,14 +411,21 @@ prediction through them is not verified here.
 | OpenFold | FASTA + A3M MSA; trains on mmCIF | `OpenFoldAdapter.write_input` - input generation |
 | Chai-1 | FASTA + optional MSA / templates / restraints | `ChaiAdapter.write_input` - input generation |
 | AlphaFold 3 | JSON (sequences, ligands) + generated MSA | `AlphaFold3Adapter.write_input` - input generation |
+| Nesso-1 (binding affinity) | YAML (protein sequences + ligand SMILES) + affinity target | `NessoAdapter.write_input` - input generation |
 
 ```python
-from proteintensor import AlphaFold3Adapter, ChaiAdapter, OpenFoldAdapter
+from proteintensor import AlphaFold3Adapter, ChaiAdapter, OpenFoldAdapter, NessoAdapter
 
 AlphaFold3Adapter("1abc.ptt").write_input("af3/1abc.json")   # AF3 fold_input JSON
 ChaiAdapter("1abc.ptt").write_input("chai/")                 # Chai FASTA (+ A3M)
 OpenFoldAdapter("1abc.ptt").write_input("openfold/")         # FASTA + alignments/
+NessoAdapter("6oim.ptt").write_input("nesso/6oim.yaml")      # Nesso YAML (+ affinity)
 ```
+
+Ligands appear in the Chai / AF3 / Nesso inputs only when they carry a SMILES
+string (e.g. added via `pt.from_smiles`). Ligands extracted from a structure
+(CCD codes) currently store elements and coordinates but not SMILES, so add a
+SMILES ligand explicitly for affinity-style predictions.
 
 Every one of these re-derives the same features before each run - parse the
 structure (mmCIF / PDB), tokenize the sequence (FASTA), and generate or parse the
@@ -437,8 +444,8 @@ MSA. ProteinTensor replaces that recurring work with a single zero-parse read:
 pytest tests/ -v
 ```
 
-176 tests across structure roundtrip, nucleic-acid (DNA/RNA) support, backbone/bonds/
+182 tests across structure roundtrip, nucleic-acid (DNA/RNA) support, backbone/bonds/
 MSA/pairs (dense + sparse)/embeddings/ligands (bond graphs, pockets, binding sites),
 sequence conversion, A3M parsing, model input adapters (Boltz, AlphaFold 3, Chai-1,
-OpenFold), multi-structure dataset, and cloud streaming (memory:// fsspec - no real
-cloud account required).
+OpenFold, Nesso), multi-structure dataset, and cloud streaming (memory:// fsspec -
+no real cloud account required).
